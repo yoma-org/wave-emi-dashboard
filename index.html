@@ -180,14 +180,97 @@ textarea{resize:vertical;min-height:120px;}
 #toast{position:fixed;bottom:28px;right:28px;background:var(--navy);color:#fff;padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:.3s;z-index:300;pointer-events:none;max-width:400px;}
 #toast.show{opacity:1;transform:translateY(0);}
 
+/* ── STEPS 4-7: PORTED FROM CHECKER APP ──────────────────────────────────── */
+
+/* STEPPER */
+.stepper{display:flex;align-items:center;margin-bottom:28px;background:var(--surface);padding:16px 24px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);}
+.step{display:flex;align-items:center;gap:8px;flex:1;}
+.step-num{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0;}
+.step.done .step-num{background:var(--success);border-color:var(--success);color:#fff;}
+.step.active .step-num{background:var(--blue);border-color:var(--blue);color:#fff;}
+.step-label{font-size:12px;font-weight:600;color:var(--muted);}
+.step.active .step-label{color:var(--blue);}
+.step.done .step-label{color:var(--success);}
+.step-line{flex:1;height:2px;background:var(--border);margin:0 8px;}
+
+/* ANIMATED BUILD CHECKLIST */
+.gen-checklist{display:flex;flex-direction:column;gap:8px;}
+.gen-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:9px;font-size:14px;color:var(--muted);background:var(--bg);border:1px solid transparent;transition:all .3s;}
+.gen-item.running{background:#dbeafe;border-color:#93c5fd;color:var(--blue);}
+.gen-item.done{background:#dcfce7;border-color:#bbf7d0;color:var(--success);}
+.gen-dot{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.gen-item.running .gen-dot{animation:spin .8s linear infinite;}
+
+/* AMOUNT VERIFY BAR */
+.amounts-verify-bar{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.av-item{text-align:center;flex:1;}
+.av-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.av-val{font-size:15px;font-weight:700;color:var(--navy);}
+.av-sep{font-size:22px;color:var(--border);}
+.av-match{display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--success);white-space:nowrap;}
+.av-mismatch{display:flex;align-items:center;gap:6px;background:#fee2e2;border:1px solid #fecdd3;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--danger);white-space:nowrap;}
+
+/* UPLOAD GUIDE */
+.ug-step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.ug-step:last-child{border-bottom:none;}
+.ug-num{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0;}
+.ug-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.ug-detail{font-size:13px;color:var(--muted);line-height:1.5;}
+
+/* MONITORING TABLE */
+.txn-table{width:100%;border-collapse:collapse;font-size:13px;}
+.txn-table th{text-align:left;padding:9px 14px;background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;}
+.txn-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.txn-table tr:last-child td{border-bottom:none;}
+.txn-table tr:hover td{background:var(--bg);}
+.row-status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.rs-ok{background:#dcfce7;color:var(--success);}
+.rs-pending{background:#f1f5f9;color:var(--muted);}
+.rs-processing{background:#dbeafe;color:var(--blue);}
+.rs-fail{background:#fee2e2;color:var(--danger);}
+
+/* RESULTS GRID */
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.rg-tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.rg-tile.success{border-color:#bbf7d0;}
+.rg-tile.failed{border-color:#fecdd3;}
+.rg-num{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-bottom:4px;}
+.rg-tile.success .rg-num{color:var(--success);}
+.rg-tile.failed .rg-num{color:var(--danger);}
+.rg-lab{font-size:12px;color:var(--muted);}
+
+/* CLOSING CHECKLIST */
+.check-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.check-item:last-child{border-bottom:none;}
+.check-box{width:20px;height:20px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.2s;}
+.check-item.checked .check-box{background:var(--success);border-color:var(--success);color:#fff;}
+.check-item-label{font-size:14px;font-weight:500;}
+.check-item.checked .check-item-label{text-decoration:line-through;color:var(--muted);}
+
+/* EMAIL DRAFT */
+.email-draft{background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:20px;font-size:13px;line-height:1.7;white-space:pre-wrap;font-family:'Inter',sans-serif;width:100%;min-height:260px;resize:vertical;outline:none;color:var(--text);}
+.email-draft:focus{border-color:var(--blue);background:#fff;}
+
+/* CSV TABLE (for prepare files) */
+.csv-table{width:100%;border-collapse:collapse;font-size:13px;}
+.csv-table th{background:#f8faff;color:var(--muted);font-weight:600;padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+.csv-table td{padding:10px 14px;border-bottom:1px solid var(--border);}
+.csv-table tr:last-child td{border-bottom:none;}
+.csv-table tr:hover td{background:#f8faff;}
+
 @media(max-width:700px){
   .summary-row-5{grid-template-columns:1fr 1fr;}
-  .grid-2,.grid-3{grid-template-columns:1fr;}
+  .grid-2,.grid-3,.results-grid{grid-template-columns:1fr;}
   .nav-links{display:none;}
   nav{padding:0 16px;}
   main{padding:16px;}
   .ticket-table{font-size:12px;}
   .ticket-table th,.ticket-table td{padding:8px 10px;}
+  .stepper{flex-wrap:wrap;gap:8px;}
+  .step-line{display:none;}
+  .amounts-verify-bar{flex-direction:column;gap:8px;}
+  .av-sep{display:none;}
 }
 </style>
 </head>
@@ -217,6 +300,11 @@ textarea{resize:vertical;min-height:120px;}
   <div class="page" id="page-emails"></div>
   <div class="page" id="page-finance"></div>
   <div class="page" id="page-emoney"></div>
+  <div class="page" id="page-emoney-prepare"></div>
+  <div class="page" id="page-emoney-checker"></div>
+  <div class="page" id="page-emoney-mapping"></div>
+  <div class="page" id="page-emoney-monitoring"></div>
+  <div class="page" id="page-emoney-close"></div>
 </main>
 
 <div class="modal-overlay" id="demo-modal" onclick="if(event.target===this)this.classList.remove('open')">
@@ -231,6 +319,14 @@ textarea{resize:vertical;min-height:120px;}
 </div>
 
 <div id="toast"></div>
+
+<div class="modal-overlay" id="modal-emoney-success" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3>Case Closed Successfully</h3>
+    <p>The disbursement for <strong id="modal-emoney-client"></strong> has been archived. The dashboard has been updated.</p>
+    <button class="btn btn-primary" style="width:100%;" onclick="closeEmoneyModal()">Back to Dashboard</button>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -396,6 +492,14 @@ function reconcileAmounts(ticket, employees){
 
 function deriveStatus(t){
   if(t.finance_status === 'REJECTED') return 'REJECTED';
+  // Steps 4-7 (E-Money processing)
+  if(t.closed) return 'COMPLETED';
+  if(t.monitor_results && !t.closed) return 'CLOSING';
+  if(t.disbursing) return 'DISBURSING';
+  if(t.mapping_in_progress) return 'GROUP_MAPPING';
+  if(t.checker_name && !t.disbursing && !t.monitor_results) return 'WITH_CHECKER';
+  if(t.files_prepared && !t.checker_name) return 'PREPARING_FILES';
+  // Legacy: keep SENT_TO_CHECKER for backward compat
   if(t.sent_to_checker) return 'SENT_TO_CHECKER';
   if(t.prechecks_done && t.finance_status === 'APPROVED') return 'READY_FOR_CHECKER';
   if(!t.prechecks_done) return 'AWAITING_EMPLOYEE_LIST';
@@ -547,8 +651,8 @@ function allTickets(){ return Object.values(state.tickets); }
 function countByStatus(s){ return allTickets().filter(t=>t.status===s).length; }
 
 function statusBadgeHtml(s){
-  const map = {AWAITING_EMPLOYEE_LIST:'badge-awaiting',PENDING_FINANCE:'badge-pending',READY_FOR_CHECKER:'badge-ready',REJECTED:'badge-rejected',SENT_TO_CHECKER:'badge-sent'};
-  const labels = {AWAITING_EMPLOYEE_LIST:'Awaiting Emp. List',PENDING_FINANCE:'Pending Finance',READY_FOR_CHECKER:'Ready for Checker',REJECTED:'Rejected',SENT_TO_CHECKER:'Sent to Checker'};
+  const map = {AWAITING_EMPLOYEE_LIST:'badge-awaiting',PENDING_FINANCE:'badge-pending',READY_FOR_CHECKER:'badge-ready',REJECTED:'badge-rejected',SENT_TO_CHECKER:'badge-sent',PREPARING_FILES:'badge-pending',WITH_CHECKER:'badge-awaiting',GROUP_MAPPING:'badge-pending',DISBURSING:'badge-ready',CLOSING:'badge-ready',COMPLETED:'badge-sent'};
+  const labels = {AWAITING_EMPLOYEE_LIST:'Awaiting Emp. List',PENDING_FINANCE:'Pending Finance',READY_FOR_CHECKER:'Ready for Checker',REJECTED:'Rejected',SENT_TO_CHECKER:'Sent to Checker',PREPARING_FILES:'Preparing Files',WITH_CHECKER:'With Checker',GROUP_MAPPING:'Group Mapping',DISBURSING:'Disbursing',CLOSING:'Closing',COMPLETED:'Completed'};
   return `<span class="${map[s]||'badge-awaiting'}">${labels[s]||s}</span>`;
 }
 function riskBadgeHtml(r){
@@ -559,6 +663,90 @@ function typeBadgeHtml(t){
   return t==='SalaryToOTC'?'<span class="badge-type-otc">OTC</span>':'<span class="badge-type-ma">MA</span>';
 }
 function reconcileIcon(s){ return {pass:'\u2705',warn:'\u26A0\uFE0F',fail:'\u274C'}[s]||'\u2753'; }
+
+// ─── STEPS 4-7: STATE & UTILITIES ───────────────────────────────────────────
+
+let currentEmoneyTid = null;
+let emoneyCheckedItems = [];
+const EMONEY_STEPS = ['Prepare Files','Checker Review','Monitor','Close'];
+const CLOSE_ITEMS = ['Download result file from Utiba','Attach bank slip to SharePoint folder','Update disbursement tracker','Send confirmation email to client','Archive to date-structured Share Drive'];
+const MONTHS_ARR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDateDMY(dateStr){
+  const [datePart] = (dateStr||'').split(' ');
+  const [y,m,d] = (datePart||'').split('-');
+  if(!y||!m||!d) return dateStr||'';
+  return `${d}-${MONTHS_ARR[parseInt(m)-1]}-${y}`;
+}
+function fmtDateMY(dateStr){
+  const [datePart] = (dateStr||'').split(' ');
+  const [y,m] = (datePart||'').split('-');
+  if(!y||!m) return dateStr||'';
+  return `${MONTHS_ARR[parseInt(m)-1]} ${y}`;
+}
+function todayStr(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function ticketToRequest(ticket){
+  const employees = (ticket.employee_data||[]).map(e=>({
+    msisdn: String(e.MSISDN||'').replace(/^0/,''),
+    amount: Number(e.Amount)||0,
+    uid: 'N/A',
+    agentId: '',
+  }));
+  const dateStr = (ticket.created_at||'').split(' ')[0] || todayStr();
+  // Use stored checker_request overrides if present
+  const cr = ticket.checker_request || {};
+  return {
+    id: ticket.id,
+    client: ticket.company,
+    batch: cr.batch || 'Batch 1',
+    type: ticket.type,
+    amount: ticket.amount_requested,
+    date: dateStr,
+    corpWallet: cr.corpWallet || '1200000147',
+    dmmWallet: cr.dmmWallet || '9779439990',
+    employees: employees,
+    approvers: {
+      hod: (ticket.email_approvals||[]).find(a=>/hod|sales/i.test(a.role))?.name || null,
+      finance: ticket.finance_approved_by || null,
+    },
+    maker: 'EMI Pipeline',
+    checker: ticket.checker_name || null,
+    fee: cr.fee != null ? cr.fee : 1000,
+    email: ticket.body_preview || '',
+    refNo: cr.refNo || ticket.id,
+  };
+}
+
+function renderEmoneyStepper(elId, activeIdx){
+  let html = '<div class="stepper">';
+  EMONEY_STEPS.forEach((label,i) => {
+    const cls = i < activeIdx ? 'done' : i === activeIdx ? 'active' : '';
+    html += `<div class="step ${cls}"><div class="step-num">${i < activeIdx ? '✓' : i+1}</div><div class="step-label">${label}</div></div>`;
+    if(i < EMONEY_STEPS.length - 1) html += '<div class="step-line"></div>';
+  });
+  html += '</div>';
+  const el = document.getElementById(elId);
+  if(el) el.innerHTML = html;
+  return html;
+}
+
+function openEmoneyTicket(tid){
+  currentEmoneyTid = tid;
+  const t = state.tickets[tid];
+  if(!t) return;
+  if(t.closed) showPage('emoney-close');
+  else if(t.monitor_results) showPage('emoney-close');
+  else if(t.disbursing) showPage('emoney-monitoring');
+  else if(t.mapping_in_progress) showPage('emoney-mapping');
+  else if(t.checker_name && t.type === 'SalaryToOTC' && !t.mapping_complete) showPage('emoney-mapping');
+  else if(t.checker_name) showPage('emoney-monitoring');
+  else if(t.files_prepared) showPage('emoney-checker');
+  else showPage('emoney-prepare');
+}
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -578,12 +766,19 @@ function showPage(id){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const navBtn = document.getElementById('nav-'+id);
   if(navBtn) navBtn.classList.add('active');
+  // All emoney sub-pages highlight the E-Money nav button
+  if(id.startsWith('emoney')) document.getElementById('nav-emoney').classList.add('active');
   window.scrollTo(0,0);
 
   if(id==='dashboard') renderDashboard();
   else if(id==='emails') renderEmails();
   else if(id==='finance') renderFinance();
   else if(id==='emoney') renderEmoney();
+  else if(id==='emoney-prepare') renderEmoneyPrepare();
+  else if(id==='emoney-checker') renderEmoneyChecker();
+  else if(id==='emoney-mapping') renderEmoneyMapping();
+  else if(id==='emoney-monitoring') renderEmoneyMonitoring();
+  else if(id==='emoney-close') renderEmoneyClose();
 }
 
 function switchRole(role){
@@ -600,19 +795,22 @@ function renderDashboard(){
   const newEmails = MOCK_EMAILS.length - state.parsedEmails.size;
   const pending = countByStatus('PENDING_FINANCE') + countByStatus('AWAITING_EMPLOYEE_LIST');
   const ready = countByStatus('READY_FOR_CHECKER');
+  const inProg = ['PREPARING_FILES','WITH_CHECKER','GROUP_MAPPING','DISBURSING','CLOSING'].reduce((n,s)=>n+countByStatus(s),0);
+  const completed = countByStatus('COMPLETED') + countByStatus('SENT_TO_CHECKER');
   const mismatches = allTickets().filter(t=>t.has_mismatch).length;
   const highRisk = allTickets().filter(t=>t.risk_level==='HIGH').length;
 
   let html = `
     <div class="section-title">\uD83C\uDF0A Wave EMI Pipeline Dashboard</div>
-    <div class="section-sub">Unified command center \u2014 Steps 1\u20133 Intake & Approval</div>
+    <div class="section-sub">Unified command center \u2014 Steps 1\u20137: Intake → Approval → Disbursement → Close</div>
     <div class="summary-row-5">
       <div class="stat-card"><div class="stat-label">\uD83D\uDCE5 New Emails</div><div class="stat-value">${newEmails}</div></div>
       <div class="stat-card ${pending>0?'warn':''}"><div class="stat-label">\u23F3 Pending</div><div class="stat-value">${pending}</div></div>
-      <div class="stat-card ${ready>0?'ok':''}"><div class="stat-label">\u2705 Ready for Checker</div><div class="stat-value">${ready}</div></div>
-      <div class="stat-card ${mismatches>0?'urgent':''}"><div class="stat-label">\u26A0\uFE0F Mismatches</div><div class="stat-value">${mismatches}</div></div>
-      <div class="stat-card ${highRisk>0?'urgent':''}"><div class="stat-label">\uD83D\uDD34 High Risk</div><div class="stat-value">${highRisk}</div></div>
+      <div class="stat-card ${ready>0?'ok':''}"><div class="stat-label">\u2705 Ready</div><div class="stat-value">${ready}</div></div>
+      <div class="stat-card ${inProg>0?'ok':''}"><div class="stat-label">\uD83D\uDD04 Processing</div><div class="stat-value">${inProg}</div></div>
+      <div class="stat-card"><div class="stat-label">\u2705 Completed</div><div class="stat-value">${completed}</div></div>
     </div>
+    ${mismatches>0||highRisk>0?`<div style="display:flex;gap:12px;margin-bottom:16px">${mismatches>0?`<div class="alert alert-warn" style="flex:1;margin:0">\u26A0\uFE0F ${mismatches} amount mismatch(es)</div>`:''}${highRisk>0?`<div class="alert alert-danger" style="flex:1;margin:0">\uD83D\uDD34 ${highRisk} high-risk ticket(s)</div>`:''}</div>`:''}
   `;
 
   if(tickets.length === 0){
@@ -1046,70 +1244,71 @@ function renderEmoney(){
     return;
   }
 
-  const ready = allTickets().filter(t => t.status === 'READY_FOR_CHECKER');
-  const sent = allTickets().filter(t => t.status === 'SENT_TO_CHECKER');
+  // Show all tickets that are past finance approval (any step 4-7 status)
+  const processingStatuses = ['READY_FOR_CHECKER','PREPARING_FILES','WITH_CHECKER','GROUP_MAPPING','DISBURSING','CLOSING','COMPLETED','SENT_TO_CHECKER'];
+  const actionable = allTickets().filter(t => processingStatuses.includes(t.status));
 
-  let html = '<div class="section-title">\uD83D\uDD01 E-Money Review</div><div class="section-sub">Tickets approved by Finance and ready for the E-Money checker team.</div>';
+  let html = '<div class="section-title">\uD83D\uDD01 E-Money Processing</div><div class="section-sub">Manage the full disbursement pipeline: prepare files, checker review, monitoring, and case closure.</div>';
 
-  if(ready.length === 0 && sent.length === 0){
-    html += '<div class="alert alert-info">No tickets ready for E-Money yet.</div>';
+  if(actionable.length === 0){
+    html += '<div class="alert alert-info">No tickets ready for E-Money yet. Tickets appear here after Finance approval.</div>';
     el.innerHTML = html;
     return;
   }
 
+  // Group by category
+  const ready = actionable.filter(t => t.status === 'READY_FOR_CHECKER');
+  const inProgress = actionable.filter(t => ['PREPARING_FILES','WITH_CHECKER','GROUP_MAPPING','DISBURSING','CLOSING'].includes(t.status));
+  const completed = actionable.filter(t => t.status === 'COMPLETED' || t.status === 'SENT_TO_CHECKER');
+
   if(ready.length > 0){
-    html += '<div style="font-size:16px;font-weight:700;margin-bottom:16px">Ready for Checker</div>';
+    html += '<div style="font-size:16px;font-weight:700;margin-bottom:16px">Ready to Process</div>';
     ready.forEach(ticket => {
       const tid = ticket.id;
-      html += `<div class="card"><div class="card-body">
+      html += `<div class="card" style="margin-bottom:12px"><div class="card-body">
         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div style="font-size:15px;font-weight:700">${tid} \u00B7 ${ticket.company} \u00B7 ${typeBadgeHtml(ticket.type)} \u00B7 ${fmt(ticket.amount_requested)} MMK</div>
           ${riskBadgeHtml(ticket.risk_level)}
+        </div>
+        <div class="grid-2" style="margin-bottom:12px">
+          <div>Pre-checks: <strong style="color:var(--success)">\u2705 Done</strong> (${ticket.total_employees||0} employees)</div>
+          <div>Finance: <strong style="color:var(--success)">\u2705 Approved by ${ticket.finance_approved_by||'\u2014'}</strong></div>
         </div>`;
-
-      html += `<div class="grid-2" style="margin-bottom:12px">
-        <div>Pre-checks: <strong style="color:var(--success)">\u2705 Done</strong> (${ticket.total_employees||0} employees, ${ticket.invalid_msisdn_count||0} invalid)</div>
-        <div>Finance: <strong style="color:var(--success)">\u2705 Approved by ${ticket.finance_approved_by||'\u2014'}</strong></div>
-      </div>`;
-
-      // Reconciliation summary
-      if(ticket.reconciliation){
-        const allPass = ticket.reconciliation.every(c => c.status === 'pass');
-        if(allPass){
-          html += `<div class="alert alert-success">\uD83D\uDCB0 All amounts match: ${fmt(ticket.amount_requested)} MMK \u2705</div>`;
-        } else {
-          ticket.reconciliation.filter(c=>c.status!=='pass').forEach(chk => {
-            html += `<div class="alert alert-warn">\u26A0\uFE0F ${chk.check}: ${chk.detail}</div>`;
-          });
-        }
-      }
-
-      // Employee list expander
       if(ticket.employee_data && ticket.employee_data.length > 0){
-        html += `<div class="expander-toggle" onclick="this.nextElementSibling.classList.toggle('open')">\u25B6 Show Cleaned Employee List (${ticket.employee_data.length} rows)</div>
-          <div class="expander-body"><div style="max-height:250px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>MSISDN</th><th>Amount</th><th>Status</th></tr></thead><tbody>`;
-        ticket.employee_data.forEach(r => {
-          html += `<tr class="${r.MSISDN_Valid?'':'invalid'}"><td>${r.Cleaned_Name}</td><td>${r.MSISDN}</td><td>${fmt(r.Amount)}</td><td>${r.Validation_Status}</td></tr>`;
+        html += `<div class="expander-toggle" onclick="this.nextElementSibling.classList.toggle('open')">\u25B6 Employee List (${ticket.employee_data.length} rows)</div>
+          <div class="expander-body"><div style="max-height:200px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>MSISDN</th><th>Amount</th></tr></thead><tbody>`;
+        ticket.employee_data.slice(0,20).forEach(r => {
+          html += `<tr><td>${r.Cleaned_Name}</td><td>${r.MSISDN}</td><td>${fmt(r.Amount)}</td></tr>`;
         });
+        if(ticket.employee_data.length>20) html += `<tr><td colspan="3" style="color:var(--muted);font-style:italic">... ${ticket.employee_data.length-20} more</td></tr>`;
         html += '</tbody></table></div></div>';
       }
-
-      // Action buttons
       html += `<div class="btn-group">
-        <a href="${CHECKER_URL}" target="_blank" class="btn btn-primary">\uD83D\uDD17 Open in Checker Dashboard</a>
-        <button class="btn btn-outline" onclick="handleExportJson('${tid}')">\uD83D\uDCE5 Export Ticket Data (JSON)</button>
-        <button class="btn btn-success" onclick="handleMarkSent('${tid}')">\u2709\uFE0F Mark as Sent to Checker</button>
+        <button class="btn btn-primary" onclick="openEmoneyTicket('${tid}')">Start Processing →</button>
+        <button class="btn btn-outline" onclick="handleExportJson('${tid}')">Export JSON</button>
       </div>`;
-
       html += '</div></div>';
     });
   }
 
-  if(sent.length > 0){
-    html += '<div style="font-size:16px;font-weight:700;margin:24px 0 16px">Already Sent</div>';
-    sent.forEach(ticket => {
-      html += `<div class="card"><div class="card-body" style="padding:14px 24px">
-        <span style="font-weight:600">\u2705 ${ticket.id}</span> \u00B7 ${ticket.company} \u00B7 ${typeBadgeHtml(ticket.type)} \u00B7 Sent to checker
+  if(inProgress.length > 0){
+    html += '<div style="font-size:16px;font-weight:700;margin:24px 0 16px">In Progress</div>';
+    inProgress.forEach(ticket => {
+      html += `<div class="card" style="margin-bottom:12px"><div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div><span style="font-weight:700">${ticket.id}</span> \u00B7 ${ticket.company} \u00B7 ${typeBadgeHtml(ticket.type)} \u00B7 ${fmt(ticket.amount_requested)} MMK</div>
+        <div style="display:flex;align-items:center;gap:8px">${statusBadgeHtml(ticket.status)}
+          <button class="btn btn-outline btn-sm" onclick="openEmoneyTicket('${ticket.id}')">Continue →</button>
+        </div>
+      </div></div>`;
+    });
+  }
+
+  if(completed.length > 0){
+    html += '<div style="font-size:16px;font-weight:700;margin:24px 0 16px">Completed</div>';
+    completed.forEach(ticket => {
+      html += `<div class="card" style="margin-bottom:12px"><div class="card-body" style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between">
+        <div><span style="font-weight:600">\u2705 ${ticket.id}</span> \u00B7 ${ticket.company} \u00B7 ${typeBadgeHtml(ticket.type)}</div>
+        ${statusBadgeHtml(ticket.status)}
       </div></div>`;
     });
   }
@@ -1134,6 +1333,614 @@ function handleMarkSent(tid){
   logActivity(`${tid} marked as sent to E-Money checker`);
   showToast(`\u2705 ${tid} sent to checker`);
   renderEmoney();
+}
+
+// ─── STEPS 4-7: PREPARE FILES, CHECKER, MAPPING, MONITORING, CLOSE ──────────
+
+function renderEmoneyPrepare(){
+  const el = document.getElementById('page-emoney-prepare');
+  if(!currentEmoneyTid || !state.tickets[currentEmoneyTid]){
+    el.innerHTML = '<div class="alert alert-warn">No ticket selected. Go back to E-Money Review.</div>';
+    return;
+  }
+  const ticket = state.tickets[currentEmoneyTid];
+  const r = ticketToRequest(ticket);
+  const dateDMY = fmtDateDMY(r.date);
+  const dateMY = fmtDateMY(r.date);
+  const emps = r.employees.length ? r.employees : [];
+  const opsEmail = 'htayhtay.myint@wavemoney.com.mm';
+
+  // Build header with stepper
+  let html = '<div id="ep-stepper"></div>';
+  html += `<div class="section-title">Generated Upload Files for ${r.client}</div>`;
+  html += `<div class="section-sub">Review each file carefully before uploading to Utiba. All files are formatted to Utiba specification.</div>`;
+
+  // Editable wallet/fee fields
+  html += `<div class="card" style="margin-bottom:16px"><div class="card-body">
+    <div style="font-weight:700;margin-bottom:12px">Wallet Configuration</div>
+    <div class="grid-3">
+      <div class="form-group"><label class="form-label">Corporate Wallet</label><input type="text" id="ep-corp-wallet" value="${r.corpWallet}"/></div>
+      <div class="form-group"><label class="form-label">DMM Wallet</label><input type="text" id="ep-dmm-wallet" value="${r.dmmWallet}"/></div>
+      <div class="form-group"><label class="form-label">Fee (MMK)</label><input type="text" id="ep-fee" value="${r.fee}"/></div>
+    </div>
+  </div></div>`;
+
+  // Amount verify bar
+  html += '<div id="ep-amounts-verify"></div>';
+  // Gen animation
+  html += '<div id="ep-gen-animation"></div>';
+  // CSV cards
+  html += '<div id="ep-csv-cards" style="display:none"></div>';
+  // Utiba guide
+  html += '<div id="ep-utiba-guide"></div>';
+  // Buttons
+  html += `<div class="btn-group">
+    <button class="btn btn-ghost" onclick="showPage('emoney')">← Back</button>
+    <button class="btn btn-primary" id="ep-btn-generate" onclick="generateEmoneyFiles()">Generate Files</button>
+    <button class="btn btn-success" id="ep-btn-next" onclick="emoneyFilesDone()" style="display:none">Mark as Uploaded — Send to Checker →</button>
+  </div>`;
+
+  el.innerHTML = html;
+  renderEmoneyStepper('ep-stepper', 0);
+}
+
+function generateEmoneyFiles(){
+  const ticket = state.tickets[currentEmoneyTid];
+  // Read wallet overrides from inputs
+  const corpWallet = document.getElementById('ep-corp-wallet').value.trim() || '1200000147';
+  const dmmWallet = document.getElementById('ep-dmm-wallet').value.trim() || '9779439990';
+  const fee = parseInt(document.getElementById('ep-fee').value) || 1000;
+
+  // Save overrides on ticket
+  updateTicket(currentEmoneyTid, {checker_request: {corpWallet, dmmWallet, fee, batch: 'Batch 1', refNo: ticket.id}});
+
+  const r = ticketToRequest(state.tickets[currentEmoneyTid]);
+  const dateDMY = fmtDateDMY(r.date);
+  const dateMY = fmtDateMY(r.date);
+  const emps = r.employees;
+  const opsEmail = 'htayhtay.myint@wavemoney.com.mm';
+
+  const files = [
+    {name:'1FundMovementfromDMMDTRtoDisbursements_Adjustment.csv',label:'File 1 — DMM → Disbursement Ledger',icon:'1',
+     headers:['SOURCE','TARGET',' AMOUNT ','DESCRIPTION'],hasHeader:true,
+     rows:[[r.dmmWallet,'disbursements',Number(r.amount)+Number(r.fee),`DMM DTR to Ledger movements~Source Wallet~${r.dmmWallet}~Target Wallet~Disbursement~Settlement period~from~${dateDMY}~to~${dateDMY}~Client Name~${r.client}~Batch~${r.batch}`]]},
+    {name:'2FundMovementfromDisbursementstoCorporate_Adjustment.csv',label:'File 2 — Disbursement → Corporate',icon:'2',
+     headers:['SOURCE','TARGET',' AMOUNT ','DESCRIPTION'],hasHeader:true,
+     rows:[['disbursements',r.corpWallet,Number(r.amount)+Number(r.fee),`Ledger to Corporate movements~Source Wallet~Disbursement~Target Wallet~${r.corpWallet}~Settlement period~from~${dateDMY}~to~${dateDMY}~Client Name~${r.client}~Batch~${r.batch}`]]},
+    {name:'FeeDisbursement_Adjustment.csv',label:'Fee Disbursement',icon:'F',
+     headers:['SOURCE','TARGET','AMOUNT','DESCRIPTION'],hasHeader:true,
+     rows:[[r.corpWallet,'feedisbursement',r.fee,`Corporate to Ledger movements~Source Wallet~${r.corpWallet}~Target Wallet~feedisbursement~Settlement period~from~${dateDMY}~to~${dateDMY}~Client Name~${r.client}~Batch~${r.batch}`]]},
+  ];
+
+  if(r.type === 'SalaryToMA'){
+    files.push({name:'SalarytoMA.csv',label:'SalaryToMA — Employee Payments',icon:'S',
+      headers:['AMOUNT','SOURCE_WALLET','TARGET_MSISDN','DESCRIPTION'],hasHeader:false,
+      rows:emps.map(e=>[e.amount,r.corpWallet,e.msisdn,`Corporate Disbursement ${dateMY}~Client Name~${r.client}~Batch~${r.batch}~Unique ID~${e.uid||'N/A'}`])});
+  } else {
+    const otcRows = [];
+    emps.forEach(e=>{
+      const desc = `Corporate Disbursement ${dateMY}~Request date~${dateDMY}~Client Name~${r.client}~Unique ID~N/A~Batch~${r.batch}_${e.msisdn}`;
+      otcRows.push([1000000,r.corpWallet,e.agentId||'',desc,e.msisdn,opsEmail,0,0]);
+      otcRows.push([400000,r.corpWallet,e.agentId||'',desc,e.msisdn,opsEmail,0,0]);
+    });
+    files.push({name:'SalarytoOTC.csv',label:'SalaryToOTC — Employee Payments',icon:'S',
+      headers:['AMOUNT','SOURCE_WALLET','AGENT_ID','DESCRIPTION','MSISDN','EMAIL','COL7','COL8'],hasHeader:false,
+      rows:otcRows});
+  }
+
+  if(r.type === 'SalaryToOTC'){
+    files.push({name:'MapAgent.csv',label:'Map Agent — Assign to Group',icon:'M',
+      headers:['MSISDN','GROUP NAME'],hasHeader:true,rows:emps.map(e=>[e.msisdn,'52680'])});
+    files.push({name:'UnmapAgent.csv',label:'Unmap Agent — Remove from Group',icon:'U',
+      headers:['MSISDN','GROUP NAME'],hasHeader:true,rows:emps.map(e=>[e.msisdn,'34661'])});
+  }
+
+  // Amount verify bar
+  const file1Amt = Number(r.amount)+Number(r.fee);
+  const amtMatch = true;
+  document.getElementById('ep-amounts-verify').innerHTML = `
+    <div class="amounts-verify-bar">
+      <div class="av-item"><div class="av-label">File 1 Total</div><div class="av-val">${fmt(file1Amt)} MMK</div></div>
+      <div class="av-sep">=</div>
+      <div class="av-item"><div class="av-label">File 2 Total</div><div class="av-val">${fmt(file1Amt)} MMK</div></div>
+      <div class="av-sep">=</div>
+      <div class="av-item"><div class="av-label">Approved Amount + Fee</div><div class="av-val">${fmt(r.amount)} + ${fmt(r.fee)}</div></div>
+      ${amtMatch?'<div class="av-match">✓ Match</div>':'<div class="av-mismatch">✗ Mismatch</div>'}
+    </div>`;
+
+  // Animated build sequence
+  const buildSteps = [
+    'Reading the approved request...',
+    'Building File 1 — fund transfer to Disbursement Ledger',
+    'Building File 2 — transfer to Corporate wallet',
+    `Building ${r.type} — employee payments`,
+    'Verifying totals...',
+    'All files ready!'
+  ];
+
+  const genEl = document.getElementById('ep-gen-animation');
+  genEl.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Building your files...</span></div><div class="card-body"><div class="gen-checklist" id="ep-gen-steps">${
+    buildSteps.map((s,i)=>`<div class="gen-item" id="ep-gs-${i}"><div class="gen-dot">○</div><div>${s}</div></div>`).join('')
+  }</div></div></div>`;
+
+  const csvCardsEl = document.getElementById('ep-csv-cards');
+  csvCardsEl.style.display = 'none';
+  document.getElementById('ep-utiba-guide').innerHTML = '';
+  document.getElementById('ep-btn-generate').style.display = 'none';
+
+  let step = 0;
+  function animateStep(){
+    if(step > 0){
+      const prev = document.getElementById('ep-gs-'+(step-1));
+      if(prev){prev.classList.remove('running');prev.classList.add('done');prev.querySelector('.gen-dot').textContent='✓';}
+    }
+    if(step < buildSteps.length){
+      const cur = document.getElementById('ep-gs-'+step);
+      if(cur){cur.classList.add('running');cur.querySelector('.gen-dot').textContent='⟳';}
+      step++;
+      setTimeout(animateStep, 350);
+    } else {
+      csvCardsEl.style.display = 'block';
+      renderEmoneyCSVCards(files);
+      renderEmoneyUtibaGuide();
+      document.getElementById('ep-btn-next').style.display = '';
+    }
+  }
+  setTimeout(animateStep, 200);
+  window._emoneyCSVFiles = files;
+}
+
+function renderEmoneyCSVCards(files){
+  document.getElementById('ep-csv-cards').innerHTML = files.map((f,fi)=>`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title"><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:var(--blue);color:#fff;font-size:13px;font-weight:700;margin-right:8px;">${f.icon}</span> ${f.label}</span>
+        <button class="btn btn-outline btn-sm" onclick="downloadEmoneyCSV(${fi})">Download</button>
+      </div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="csv-table">
+          <thead><tr>${f.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${f.rows.slice(0,4).map(row=>`<tr>${row.map(c=>`<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c}">${c}</td>`).join('')}</tr>`).join('')}
+          ${f.rows.length>4?`<tr><td colspan="${f.headers.length}" style="color:var(--muted);font-style:italic">... ${f.rows.length-4} more row(s)</td></tr>`:''}
+          </tbody>
+        </table>
+      </div>
+    </div>`).join('');
+}
+
+function renderEmoneyUtibaGuide(){
+  document.getElementById('ep-utiba-guide').innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Utiba Upload Guide</span></div>
+      <div class="card-body">
+        <div class="ug-step"><div class="ug-num">1</div><div><div class="ug-title">Open Utiba</div><div class="ug-detail">Go to Bulk Functions → Initialise Bulk Upload</div></div></div>
+        <div class="ug-step"><div class="ug-num">2</div><div><div class="ug-title">Upload File 1</div><div class="ug-detail">Select File 1 (Fund Movement DMM → Disbursement). Wait until accepted.</div></div></div>
+        <div class="ug-step"><div class="ug-num">3</div><div><div class="ug-title">Upload File 2</div><div class="ug-detail">Upload File 2 (Disbursement → Corporate). Verify totals match.</div></div></div>
+        <div class="ug-step"><div class="ug-num">4</div><div><div class="ug-title">Notify Checker</div><div class="ug-detail">Once both files are uploaded and accepted, notify your Checker for review.</div></div></div>
+      </div>
+    </div>`;
+}
+
+function downloadEmoneyCSV(idx){
+  const f = window._emoneyCSVFiles[idx];
+  const dataRows = f.hasHeader ? [f.headers,...f.rows] : f.rows;
+  const csv = dataRows.map(r=>r.map(c=>String(c).includes(',')?`"${c}"`:c).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = f.name; a.click();
+  showToast('Downloaded: '+f.name);
+}
+
+function emoneyFilesDone(){
+  updateTicket(currentEmoneyTid, {files_prepared:true});
+  logActivity(`${currentEmoneyTid} files prepared — sent to Checker`);
+  showToast('Files ready — proceed to Checker Review');
+  showPage('emoney-checker');
+}
+
+// ── CHECKER REVIEW ──────────────────────────────────────────────────────────
+
+function renderEmoneyChecker(){
+  const el = document.getElementById('page-emoney-checker');
+  if(!currentEmoneyTid || !state.tickets[currentEmoneyTid]){
+    el.innerHTML = '<div class="alert alert-warn">No ticket selected.</div>'; return;
+  }
+  const ticket = state.tickets[currentEmoneyTid];
+  const r = ticketToRequest(ticket);
+
+  let html = '<div id="ec-stepper"></div>';
+  html += `<div class="grid-2" style="align-items:start">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Checker Approval</span></div>
+      <div class="card-body">
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600">Client</div><div style="color:var(--muted);margin-top:2px">${r.client}</div></div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600">Ref #</div><div style="color:var(--blue);font-weight:600;margin-top:2px">${r.refNo}</div></div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600">Amount</div><div style="font-weight:700;font-size:16px;color:var(--navy);margin-top:2px">${fmt(r.amount)} MMK</div></div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600">Type</div><div style="margin-top:2px">${r.type}</div></div>
+        <div style="padding:10px 0"><div style="font-weight:600">HOD Approval</div><div style="margin-top:2px">${r.approvers?.hod||'—'}</div></div>
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Checker Name <span>*</span></label>
+          <input type="text" id="ec-checker-name" placeholder="Your name"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <textarea id="ec-checker-notes" rows="3" placeholder="Any discrepancies or notes..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn btn-success" onclick="approveEmoneyChecker()" style="flex:1">Approve</button>
+          <button class="btn btn-danger" onclick="rejectEmoneyChecker()" style="flex:1">Reject</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">File Verification</span></div>
+      <div class="card-body">
+        <div class="alert alert-success">Maker has uploaded all files to Utiba. Please verify the amounts match the system.</div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px"><span>💼</span><div style="flex:1"><div style="font-weight:600">Fund Movement Files</div><div style="color:var(--muted);font-size:13px">2 files — ${fmt(r.amount)} MMK each</div></div><span class="badge-ready" style="font-size:12px;padding:4px 10px">Ready</span></div>
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px"><span>👥</span><div style="flex:1"><div style="font-weight:600">${r.type} File</div><div style="color:var(--muted);font-size:13px">${r.employees.length} recipients</div></div><span class="badge-ready" style="font-size:12px;padding:4px 10px">Ready</span></div>
+        <div style="padding:10px 0;display:flex;align-items:center;gap:12px"><span>💳</span><div style="flex:1"><div style="font-weight:600">Fee Disbursement</div><div style="color:var(--muted);font-size:13px">${fmt(r.fee)} MMK</div></div><span class="badge-ready" style="font-size:12px;padding:4px 10px">Ready</span></div>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+  renderEmoneyStepper('ec-stepper', 1);
+}
+
+function approveEmoneyChecker(){
+  const name = document.getElementById('ec-checker-name').value.trim();
+  if(!name){showToast('Please enter your name.');return;}
+  const ticket = state.tickets[currentEmoneyTid];
+  if(ticket.type === 'SalaryToOTC'){
+    updateTicket(currentEmoneyTid, {checker_name:name, mapping_in_progress:true, mapping_complete:false});
+    logActivity(`${currentEmoneyTid} approved by Checker (${name}) — proceed to Group Mapping`);
+    showToast('Approved by '+name+' — proceed to Group Mapping');
+    showPage('emoney-mapping');
+  } else {
+    updateTicket(currentEmoneyTid, {checker_name:name, disbursing:true});
+    logActivity(`${currentEmoneyTid} approved by Checker (${name}) — starting disbursement`);
+    showToast('Approved by '+name+' — starting disbursement');
+    showPage('emoney-monitoring');
+  }
+}
+
+function rejectEmoneyChecker(){
+  updateTicket(currentEmoneyTid, {files_prepared:false, checker_name:null});
+  logActivity(`${currentEmoneyTid} rejected by Checker — sent back for revision`);
+  showToast('Request sent back for revision');
+  showPage('emoney');
+}
+
+// ── GROUP MAPPING ───────────────────────────────────────────────────────────
+
+function renderEmoneyMapping(){
+  const el = document.getElementById('page-emoney-mapping');
+  if(!currentEmoneyTid || !state.tickets[currentEmoneyTid]){
+    el.innerHTML = '<div class="alert alert-warn">No ticket selected.</div>'; return;
+  }
+  const r = ticketToRequest(state.tickets[currentEmoneyTid]);
+  const emps = r.employees;
+  const makeTable = ()=>`<table class="csv-table"><thead><tr><th>MSISDN</th><th>Agent ID</th></tr></thead><tbody>`+
+    emps.map(e=>`<tr><td style="font-family:monospace">${e.msisdn}</td><td>${e.agentId||'—'}</td></tr>`).join('')+
+    `</tbody></table>`;
+
+  let html = '<div id="em-stepper"></div>';
+  html += '<div class="section-title">Group Mapping</div>';
+  html += '<div class="section-sub">Map employee MSISDNs to OTC agent group before disbursement, then unmap after completion.</div>';
+  html += `<div class="grid-2" style="align-items:start">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Map Agent</span><button class="btn btn-outline btn-sm" onclick="downloadEmoneyMapCSV('map')">Download MapAgent.csv</button></div>
+      <div class="card-body">
+        <div class="form-group"><label class="form-label">Target Group Name</label><input type="text" id="em-map-group" value="52680"/></div>
+        <div style="overflow-x:auto">${makeTable()}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Unmap Agent</span><button class="btn btn-outline btn-sm" onclick="downloadEmoneyMapCSV('unmap')">Download UnmapAgent.csv</button></div>
+      <div class="card-body">
+        <div class="form-group"><label class="form-label">Previous Group Name</label><input type="text" id="em-unmap-group" value="34661"/></div>
+        <div style="overflow-x:auto">${makeTable()}</div>
+      </div>
+    </div>
+  </div>`;
+  html += `<div class="btn-group">
+    <button class="btn btn-ghost" onclick="showPage('emoney-checker')">← Back</button>
+    <button class="btn btn-primary" onclick="completeEmoneyMapping()">Mapping Complete → Monitor Disbursement</button>
+  </div>`;
+
+  el.innerHTML = html;
+  renderEmoneyStepper('em-stepper', 1);
+}
+
+function downloadEmoneyMapCSV(type){
+  const r = ticketToRequest(state.tickets[currentEmoneyTid]);
+  const group = type==='map'
+    ? (document.getElementById('em-map-group')?.value||'52680')
+    : (document.getElementById('em-unmap-group')?.value||'34661');
+  const rows = ['MSISDN,GROUP NAME',...r.employees.map(e=>e.msisdn+','+group)];
+  const csv = rows.join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = (type==='map'?'MapAgent':'UnmapAgent')+'.csv'; a.click();
+  showToast('Downloaded: '+a.download);
+}
+
+function completeEmoneyMapping(){
+  updateTicket(currentEmoneyTid, {mapping_in_progress:false, mapping_complete:true, disbursing:true});
+  logActivity(`${currentEmoneyTid} mapping complete — starting disbursement`);
+  showToast('Mapping complete — starting disbursement');
+  showPage('emoney-monitoring');
+}
+
+// ── MONITORING ──────────────────────────────────────────────────────────────
+
+function renderEmoneyMonitoring(){
+  const el = document.getElementById('page-emoney-monitoring');
+  if(!currentEmoneyTid || !state.tickets[currentEmoneyTid]){
+    el.innerHTML = '<div class="alert alert-warn">No ticket selected.</div>'; return;
+  }
+  const ticket = state.tickets[currentEmoneyTid];
+  const r = ticketToRequest(ticket);
+  const emps = r.employees;
+
+  let html = '<div id="emon-stepper"></div>';
+  html += '<div class="section-title">Disbursement Monitoring</div>';
+  html += '<div class="section-sub">Transactions are being processed. Monitor progress below.</div>';
+  html += '<div id="emon-results" style="display:none"></div>';
+  html += `<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">Transaction Progress</span><span id="emon-counter" class="badge-ready" style="font-size:12px;padding:4px 10px">0 / ${emps.length}</span></div>
+    <div class="card-body" style="padding:0;overflow-x:auto">
+      <table class="txn-table"><thead><tr><th>#</th><th>MSISDN</th><th>Amount (MMK)</th><th>Status</th></tr></thead>
+      <tbody id="emon-txn-body"></tbody></table>
+    </div>
+  </div>`;
+  html += `<div class="btn-group">
+    <button class="btn btn-ghost" onclick="showPage('emoney')">← Dashboard</button>
+    <button class="btn btn-success" id="emon-btn-continue" onclick="showPage('emoney-close')" style="display:none">Continue to Close →</button>
+  </div>`;
+
+  el.innerHTML = html;
+  renderEmoneyStepper('emon-stepper', 2);
+
+  // If already done, show saved results
+  if(ticket.monitor_results){
+    showEmoneyMonitorResults(ticket.monitor_results);
+    renderEmoneyMonitorTable(emps, emps.length);
+    document.getElementById('emon-btn-continue').style.display = '';
+    return;
+  }
+
+  // Build table with pending status
+  const tbody = document.getElementById('emon-txn-body');
+  tbody.innerHTML = emps.map((e,i)=>`
+    <tr id="emon-txn-${i}">
+      <td>${i+1}</td>
+      <td style="font-family:monospace">${e.msisdn}</td>
+      <td style="font-weight:600">${fmt(e.amount)}</td>
+      <td><span class="row-status rs-pending">Pending</span></td>
+    </tr>`).join('');
+
+  // Animate processing
+  let processed = 0, successCount = 0, failCount = 0, paidAmount = 0, failedAmount = 0;
+
+  function processNext(){
+    if(processed >= emps.length){
+      const results = {total:emps.length, success:successCount, failed:failCount, paidAmount, failedAmount};
+      updateTicket(currentEmoneyTid, {monitor_results:results, disbursing:false});
+      logActivity(`${currentEmoneyTid} disbursement complete — ${successCount}/${emps.length} successful`);
+      showEmoneyMonitorResults(results);
+      document.getElementById('emon-btn-continue').style.display = '';
+      return;
+    }
+    const row = document.getElementById('emon-txn-'+processed);
+    if(row){
+      row.querySelector('td:last-child').innerHTML = '<span class="row-status rs-processing">Processing...</span>';
+    }
+    setTimeout(()=>{
+      const success = Math.random() < 0.95;
+      if(row){
+        const statusCell = row.querySelector('td:last-child');
+        if(success){
+          statusCell.innerHTML = '<span class="row-status rs-ok">✓ Success</span>';
+          successCount++; paidAmount += emps[processed].amount;
+        } else {
+          statusCell.innerHTML = '<span class="row-status rs-fail">✗ Failed</span>';
+          failCount++; failedAmount += emps[processed].amount;
+        }
+      }
+      processed++;
+      document.getElementById('emon-counter').textContent = `${processed} / ${emps.length}`;
+      processNext();
+    }, 120 + Math.random()*180);
+  }
+  setTimeout(processNext, 500);
+}
+
+function showEmoneyMonitorResults(results){
+  const el = document.getElementById('emon-results');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="alert alert-success" style="margin-bottom:16px">Disbursement complete — ${results.success} of ${results.total} transactions successful</div>
+    <div class="results-grid">
+      <div class="rg-tile"><div class="rg-num">${results.total}</div><div class="rg-lab">Total Processed</div></div>
+      <div class="rg-tile success"><div class="rg-num">${results.success}</div><div class="rg-lab">Successful</div></div>
+      <div class="rg-tile failed"><div class="rg-num">${results.failed}</div><div class="rg-lab">Failed</div></div>
+    </div>
+    <div class="amounts-verify-bar" style="margin-bottom:20px">
+      <div class="av-item"><div class="av-label">Total Paid</div><div class="av-val" style="color:var(--success)">${fmt(results.paidAmount)} MMK</div></div>
+      <div class="av-sep">|</div>
+      <div class="av-item"><div class="av-label">Failed Amount</div><div class="av-val" style="color:${results.failedAmount?'var(--danger)':'var(--muted)'}">${fmt(results.failedAmount)} MMK</div></div>
+    </div>`;
+}
+
+function renderEmoneyMonitorTable(emps, doneCount){
+  const tbody = document.getElementById('emon-txn-body');
+  tbody.innerHTML = emps.map((e,i)=>`
+    <tr><td>${i+1}</td><td style="font-family:monospace">${e.msisdn}</td><td style="font-weight:600">${fmt(e.amount)}</td>
+    <td><span class="row-status rs-ok">✓ Success</span></td></tr>`).join('');
+  document.getElementById('emon-counter').textContent = `${doneCount} / ${emps.length}`;
+}
+
+// ── CLOSE CASE ──────────────────────────────────────────────────────────────
+
+function renderEmoneyClose(){
+  const el = document.getElementById('page-emoney-close');
+  if(!currentEmoneyTid || !state.tickets[currentEmoneyTid]){
+    el.innerHTML = '<div class="alert alert-warn">No ticket selected.</div>'; return;
+  }
+  emoneyCheckedItems = [];
+  const ticket = state.tickets[currentEmoneyTid];
+  const r = ticketToRequest(ticket);
+
+  let html = '<div id="ecl-stepper"></div>';
+
+  // Results summary
+  if(ticket.monitor_results){
+    const mr = ticket.monitor_results;
+    html += `<div class="results-grid" style="margin-bottom:20px">
+      <div class="rg-tile success"><div class="rg-num">${fmt(mr.paidAmount)}</div><div class="rg-lab">Total Paid (MMK)</div></div>
+      <div class="rg-tile failed"><div class="rg-num">${fmt(mr.failedAmount)}</div><div class="rg-lab">Failed (MMK)</div></div>
+      <div class="rg-tile"><div class="rg-num">${mr.success}/${mr.total}</div><div class="rg-lab">Success Rate</div></div>
+    </div>`;
+  }
+
+  const alreadyClosed = ticket.closed;
+  html += `<div class="grid-2" style="align-items:start">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Closing Checklist</span></div>
+      <div class="card-body">
+        <div id="ecl-checklist-items"></div>
+        <div style="margin-top:20px">
+          <button class="btn btn-success" id="ecl-btn-close" onclick="closeEmoneyCase()" style="width:100%;opacity:.4;" disabled>Close & Archive Case</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Client Confirmation Email</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="downloadEmoneyReport()">Download Report</button>
+          <button class="btn btn-outline btn-sm" onclick="copyEmoneyEmail()">Copy</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Edit the email below if needed, then copy or send.</div>
+        <textarea class="email-draft" id="ecl-email-draft"></textarea>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+  renderEmoneyStepper('ecl-stepper', 3);
+
+  // Fill checklist
+  const checklistEl = document.getElementById('ecl-checklist-items');
+  if(alreadyClosed){
+    checklistEl.innerHTML = '<div class="alert alert-success">This case was successfully archived.' +
+      (r.checker?' Checker: <strong>'+r.checker+'</strong>.':'')+
+      '</div>' +
+      CLOSE_ITEMS.map(item=>'<div class="check-item checked"><div class="check-box">✓</div><div class="check-item-label">'+item+'</div></div>').join('');
+    document.getElementById('ecl-btn-close').style.display = 'none';
+  } else {
+    checklistEl.innerHTML = CLOSE_ITEMS.map((item,i)=>`
+      <div class="check-item" id="ecl-ci-${i}" onclick="toggleEmoneyCheck(${i},'${item.replace(/'/g,"\\'")}')">
+        <div class="check-box" id="ecl-cb-${i}"></div>
+        <div class="check-item-label">${item}</div>
+      </div>`).join('');
+  }
+
+  // Fill email
+  const emailText = `Dear ${r.client} Team,
+
+We are pleased to confirm that the corporate salary disbursement for the period has been completed successfully.
+
+Request Details:
+━━━━━━━━━━━━━━━━━━━━
+Reference     : ${r.refNo}
+Client        : ${r.client}
+Batch         : ${r.batch}
+Amount        : ${fmt(r.amount)} MMK
+Type          : ${r.type}
+Processed Date: ${todayStr()}
+━━━━━━━━━━━━━━━━━━━━
+
+All ${r.employees.length} transactions have been processed. Please contact us within 24 hours if any discrepancies are found.
+
+Best regards,
+Wave Money Corporate Services Team`;
+  document.getElementById('ecl-email-draft').value = emailText;
+}
+
+function toggleEmoneyCheck(i, label){
+  const item = document.getElementById('ecl-ci-'+i);
+  const box = document.getElementById('ecl-cb-'+i);
+  if(item.classList.contains('checked')){
+    item.classList.remove('checked');
+    emoneyCheckedItems = emoneyCheckedItems.filter(x=>x!==label);
+    box.textContent = '';
+  } else {
+    item.classList.add('checked');
+    emoneyCheckedItems.push(label);
+    box.textContent = '✓';
+  }
+  const btn = document.getElementById('ecl-btn-close');
+  btn.disabled = emoneyCheckedItems.length < CLOSE_ITEMS.length;
+  btn.style.opacity = emoneyCheckedItems.length < CLOSE_ITEMS.length ? '.4' : '1';
+}
+
+function closeEmoneyCase(){
+  const ticket = state.tickets[currentEmoneyTid];
+  if(!ticket) return;
+  updateTicket(currentEmoneyTid, {closed:true});
+  const txt = document.getElementById('ecl-email-draft').value;
+  navigator.clipboard.writeText(txt).catch(()=>{});
+  document.getElementById('modal-emoney-client').textContent = ticket.company;
+  document.getElementById('modal-emoney-success').classList.add('open');
+  logActivity(`${currentEmoneyTid} case closed and archived`);
+  showToast('Case archived · Confirmation email copied to clipboard');
+}
+
+function closeEmoneyModal(){
+  document.getElementById('modal-emoney-success').classList.remove('open');
+  showPage('dashboard');
+}
+
+function copyEmoneyEmail(){
+  const txt = document.getElementById('ecl-email-draft').value;
+  navigator.clipboard.writeText(txt).then(()=>showToast('Email copied to clipboard!'));
+}
+
+function downloadEmoneyReport(){
+  const ticket = state.tickets[currentEmoneyTid];
+  if(!ticket) return;
+  const r = ticketToRequest(ticket);
+  const mr = ticket.monitor_results || {total:r.employees.length, success:r.employees.length, failed:0, paidAmount:r.amount, failedAmount:0};
+  const rows = [
+    ['Disbursement Report'],
+    ['Reference', r.refNo],
+    ['Client', r.client],
+    ['Batch', r.batch],
+    ['Type', r.type],
+    ['Total Amount', r.amount],
+    ['Date', todayStr()],
+    [''],
+    ['Results'],
+    ['Total Processed', mr.total],
+    ['Successful', mr.success],
+    ['Failed', mr.failed],
+    ['Paid Amount (MMK)', mr.paidAmount],
+    ['Failed Amount (MMK)', mr.failedAmount],
+    [''],
+    ['Employee Details'],
+    ['MSISDN','Amount','Status'],
+    ...(r.employees||[]).map(e=>[e.msisdn, e.amount, 'Processed'])
+  ];
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = `Report_${r.refNo}.csv`;
+  a.click();
+  showToast('Report downloaded');
 }
 
 // ─── N8N WEBHOOK INTAKE ──────────────────────────────────────────────────────

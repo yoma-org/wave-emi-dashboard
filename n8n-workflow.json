@@ -1,0 +1,179 @@
+{
+  "name": "EMI Email Intake Pipeline (Webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emi-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "emi-intake"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize webhook POST data into flat fields for downstream nodes\n// _source defaults to 'webhook' — no Set node needed\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Webhook v2: POST body fields are directly on $json\n  // Also handle nested body wrapper just in case\n  const subject = d.body?.subject || d.subject || '';\n  const body = d.body?.body || d.bodyPreview || d.body || '';\n  const from = d.body?.from || d.from || '';\n\n  results.push({\n    json: {\n      _source: 'webhook',\n      subject: typeof subject === 'string' ? subject : '',\n      body: typeof body === 'string' ? body : '',\n      from: typeof from === 'string' ? from : '',\n      received_at: new Date().toISOString(),\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "normalize-data",
+      "name": "Normalize Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "Salary",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "cond-2",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "Disbursement",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "cond-3",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "EMI",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "cond-4",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "OTC",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-keyword-filter",
+      "name": "Keyword Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract structured disbursement data from normalized email fields\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const subject = item.json.subject || '';\n  const body = item.json.body || '';\n  const from = item.json.from || '';\n  const source = item.json._source || 'webhook';\n\n  // COMPANY NAME\n  let company = 'Unknown Company';\n  const companyMatch = subject.match(/[\\u2013\\u2014\\-]\\s*(.+)$/);\n  if (companyMatch) company = companyMatch[1].trim();\n\n  // AMOUNT\n  let amount = 0;\n  const amountMatch = body.match(/([\\d,]+)\\s*(?:MMK|Kyat)/i)\n    || body.match(/(?:MMK|Kyat)\\s*([\\d,]+)/i)\n    || subject.match(/([\\d,]+)\\s*(?:MMK|Kyat)/i);\n  if (amountMatch) {\n    amount = parseInt(amountMatch[1].replace(/,/g, ''), 10);\n  }\n\n  // TYPE\n  const isOTC = /OTC/i.test(subject) || /OTC/i.test(body) || /over.the.counter/i.test(body);\n  const type = isOTC ? 'SalaryToOTC' : 'SalaryToMA';\n\n  // APPROVERS\n  const approvals = [];\n  const pattern = /(?:Approved by|authorized by|sign-off:?)\\s+([^(]+?)\\s*\\(([^)]+)\\)/gi;\n  let match;\n  while ((match = pattern.exec(body)) !== null) {\n    const name = match[1].trim();\n    const role = match[2].trim();\n    if (!approvals.find(a => a.name === name)) {\n      approvals.push({ name, role, status: 'Approved' });\n    }\n  }\n\n  results.push({\n    json: {\n      _source: source,\n      company,\n      type,\n      amount_requested: amount,\n      amount_on_bank_slip: amount,\n      currency: 'MMK',\n      approvals,\n      required_approvals: ['Sales HOD', 'Finance Manager'],\n      body_preview: body.substring(0, 200),\n      from_email: from,\n      original_subject: subject,\n      parsed_at: new Date().toISOString(),\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "code-parse-email",
+      "name": "Parse Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check authority matrix + generate the dashboard URL\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  // AUTHORITY MATRIX CHECK\n  const required = data.required_approvals || ['Sales HOD', 'Finance Manager'];\n  const matrixResults = required.map(req => {\n    const found = (data.approvals || []).find(a =>\n      a.role.toLowerCase().includes(req.toLowerCase())\n    );\n    return {\n      requiredRole: req,\n      found: !!found,\n      foundName: found ? found.name : 'MISSING',\n    };\n  });\n  const matrixComplete = matrixResults.every(m => m.found);\n\n  // SCENARIO DETECTION\n  let scenario = 'NORMAL';\n  if (data.amount_requested !== data.amount_on_bank_slip) {\n    scenario = 'AMOUNT_MISMATCH';\n  } else if (!matrixComplete) {\n    scenario = 'MISSING_APPROVAL';\n  }\n\n  // BUILD TICKET PAYLOAD\n  const ticket = {\n    company: data.company,\n    type: data.type,\n    amount_requested: data.amount_requested,\n    amount_on_bank_slip: data.amount_on_bank_slip,\n    currency: data.currency,\n    approvals: data.approvals,\n    required_approvals: data.required_approvals,\n    body_preview: data.body_preview,\n    parsed_at: data.parsed_at,\n    scenario,\n    approval_matrix_complete: matrixComplete,\n  };\n\n  // GENERATE DASHBOARD URL\n  const encoded = Buffer.from(JSON.stringify(ticket)).toString('base64');\n  const dashboardUrl = `https://wave-emi-dashboard.vercel.app/?n8n_ticket=${encoded}`;\n\n  results.push({\n    json: {\n      _source: data._source,\n      dashboard_url: dashboardUrl,\n      company: data.company,\n      amount: data.amount_requested,\n      type: data.type,\n      scenario,\n      matrix_complete: matrixComplete,\n      matrix_details: matrixResults,\n      from_email: data.from_email,\n      original_subject: data.original_subject,\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "code-validate-url",
+      "name": "Validate & Generate URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond with Dashboard URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1460, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Keyword Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keyword Filter": {
+      "main": [
+        [
+          {
+            "node": "Parse Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Parse Email": {
+      "main": [
+        [
+          {
+            "node": "Validate & Generate URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Generate URL": {
+      "main": [
+        [
+          {
+            "node": "Respond with Dashboard URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
