@@ -1,5 +1,5 @@
 {
-  "name": "EMI Email Intake Pipeline (Webhook)",
+  "name": "EMI Email Intake Pipeline (Webhook + Outlook)",
   "nodes": [
     {
       "parameters": {
@@ -17,13 +17,33 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalize webhook POST data into flat fields for downstream nodes\n// _source defaults to 'webhook' — no Set node needed\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Webhook v2: POST body fields are directly on $json\n  // Also handle nested body wrapper just in case\n  const subject = d.body?.subject || d.subject || '';\n  const body = d.body?.body || d.bodyPreview || d.body || '';\n  const from = d.body?.from || d.from || '';\n\n  results.push({\n    json: {\n      _source: 'webhook',\n      subject: typeof subject === 'string' ? subject : '',\n      body: typeof body === 'string' ? body : '',\n      from: typeof from === 'string' ? from : '',\n      received_at: new Date().toISOString(),\n    }\n  });\n}\n\nreturn results;"
+        "event": "messageReceived",
+        "options": {
+          "folderToWatch": "inbox"
+        }
+      },
+      "id": "outlook-trigger",
+      "name": "Outlook Trigger",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 2,
+      "position": [250, 520],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_OUTLOOK_CREDENTIAL_ID",
+          "name": "Microsoft Outlook (khanhnguyen@zeyalabs.ai)"
+        }
+      },
+      "notes": "SETUP: In n8n Cloud > Credentials > Add > Microsoft Outlook OAuth2. Login with khanhnguyen@zeyalabs.ai. Grant Mail.Read + Mail.Send permissions. Then copy the credential ID here."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize both webhook POST and Outlook trigger into flat fields\n// Source auto-detected: Outlook emails have bodyPreview; webhooks do not\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n\n  // DETECT SOURCE: Outlook trigger has bodyPreview or body.contentType\n  const isOutlook = d.bodyPreview !== undefined || d.body?.contentType !== undefined;\n  const source = isOutlook ? 'outlook' : 'webhook';\n\n  // SUBJECT\n  const subject = isOutlook\n    ? (d.subject || '')\n    : (d.body?.subject || d.subject || '');\n\n  // BODY: Outlook uses bodyPreview or body.content; webhook uses body field\n  let body = '';\n  if (isOutlook) {\n    body = d.bodyPreview || d.body?.content || '';\n  } else {\n    const raw = d.body?.body || d.bodyPreview || d.body || '';\n    body = typeof raw === 'string' ? raw : '';\n  }\n\n  // FROM: Outlook uses from.emailAddress.address; webhook uses flat 'from'\n  let from = '';\n  if (isOutlook) {\n    from = d.from?.emailAddress?.address || d.sender?.emailAddress?.address || '';\n  } else {\n    from = d.body?.from || d.from || '';\n  }\n\n  results.push({\n    json: {\n      _source: source,\n      subject: typeof subject === 'string' ? subject : '',\n      body: typeof body === 'string' ? body : '',\n      from: typeof from === 'string' ? from : '',\n      received_at: new Date().toISOString(),\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "normalize-data",
       "name": "Normalize Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [500, 300]
+      "position": [520, 400]
     },
     {
       "parameters": {
@@ -78,7 +98,7 @@
       "name": "Keyword Filter",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [740, 300]
+      "position": [760, 400]
     },
     {
       "parameters": {
@@ -88,7 +108,7 @@
       "name": "Parse Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [980, 300]
+      "position": [1000, 400]
     },
     {
       "parameters": {
@@ -98,7 +118,35 @@
       "name": "Validate & Generate URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1220, 300]
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "source-check",
+              "leftValue": "={{ $json._source }}",
+              "rightValue": "webhook",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-by-source",
+      "name": "Route by Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1480, 400]
     },
     {
       "parameters": {
@@ -110,11 +158,44 @@
       "name": "Respond with Dashboard URL",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1460, 300]
+      "position": [1720, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.from_email || 'khanhnguyen@zeyalabs.ai' }}",
+        "subject": "=EMI Pipeline: {{ $json.company }} — {{ $json.scenario }}",
+        "bodyContent": "=<h2>EMI Disbursement Ticket Created</h2><p><strong>Company:</strong> {{ $json.company }}<br><strong>Amount:</strong> {{ $json.amount }} MMK<br><strong>Type:</strong> {{ $json.type }}<br><strong>Scenario:</strong> {{ $json.scenario }}<br><strong>Authority Matrix:</strong> {{ $json.matrix_complete ? 'Complete' : 'INCOMPLETE' }}</p><p><a href=\"{{ $json.dashboard_url }}\">Open Dashboard to Review</a></p><hr><p style=\"color:#666;font-size:12px\">Auto-generated by Wave EMI Pipeline (n8n)</p>",
+        "options": {
+          "importance": "normal"
+        }
+      },
+      "id": "send-notification",
+      "name": "Send Dashboard Notification",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1720, 520],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_OUTLOOK_CREDENTIAL_ID",
+          "name": "Microsoft Outlook (khanhnguyen@zeyalabs.ai)"
+        }
+      },
+      "notes": "SETUP: Uses same Microsoft OAuth2 credential as Outlook Trigger. Sends dashboard link to the original email sender (or fallback to khanhnguyen@zeyalabs.ai)."
     }
   ],
   "connections": {
     "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outlook Trigger": {
       "main": [
         [
           {
@@ -163,7 +244,25 @@
       "main": [
         [
           {
+            "node": "Route by Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Source": {
+      "main": [
+        [
+          {
             "node": "Respond with Dashboard URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Dashboard Notification",
             "type": "main",
             "index": 0
           }

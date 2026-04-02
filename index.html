@@ -12,7 +12,12 @@
   --navy:#001E4E;--blue:#0057B8;--blue-light:#1a7fe8;--accent:#00C2D4;
   --bg:#f0f4fa;--surface:#fff;--border:#e2e8f0;
   --text:#1a2540;--muted:#64748b;--success:#16a34a;--warn:#d97706;--danger:#dc2626;
-  --radius:12px;--shadow:0 2px 12px rgba(0,30,78,.08);
+  --radius:12px;--radius-lg:16px;
+  --shadow-sm:0 1px 3px rgba(0,30,78,.06);
+  --shadow:0 2px 12px rgba(0,30,78,.08);
+  --shadow-md:0 4px 20px rgba(0,30,78,.12);
+  --shadow-lg:0 8px 32px rgba(0,30,78,.16);
+  --transition-fast:.15s ease;--transition:.25s ease;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
@@ -30,24 +35,52 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 .nav-right select{padding:6px 12px;border-radius:8px;font-size:13px;font-family:inherit;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;outline:none;}
 .nav-right select option{color:var(--text);background:#fff;}
 
+/* ROLE BADGE */
+.role-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:var(--transition-fast);position:relative;}
+.role-badge:hover{background:rgba(255,255,255,.15);}
+.role-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.role-intake .role-dot{background:var(--accent);}
+.role-finance .role-dot{background:var(--warn);}
+.role-emoney .role-dot{background:var(--success);}
+
+/* BREADCRUMBS */
+.breadcrumbs{display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;flex-wrap:wrap;}
+.breadcrumbs a{color:var(--muted);text-decoration:none;font-weight:500;transition:color var(--transition-fast);}
+.breadcrumbs a:hover{color:var(--blue);text-decoration:underline;}
+.bc-sep{color:var(--border);font-size:11px;}
+.bc-current{color:var(--text);font-weight:600;}
+
+/* HAMBURGER MENU */
+.hamburger{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:8px;}
+.mobile-menu{display:none;position:fixed;top:64px;left:0;right:0;background:var(--navy);padding:16px;z-index:99;box-shadow:var(--shadow-lg);flex-direction:column;gap:4px;}
+.mobile-menu.open{display:flex;}
+.mobile-menu .nav-btn{text-align:left;padding:12px 16px;font-size:15px;width:100%;}
+
 /* LAYOUT */
 main{max-width:1100px;margin:0 auto;padding:28px 24px;}
-.page{display:none;opacity:0;transition:opacity .15s ease;}.page.active{display:block;opacity:1;}
+.page{display:none;opacity:0;transform:translateY(8px);transition:opacity var(--transition),transform var(--transition);}.page.active{display:block;opacity:1;transform:translateY(0);}
 
 /* CARDS */
-.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px;}
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px;transition:box-shadow var(--transition-fast);}
+.card:hover{box-shadow:var(--shadow-md);}
 .card-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-body{padding:24px;}
-.card-title{font-weight:700;font-size:15px;}
+.card-title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+.card-accent{border-top:3px solid var(--blue);}.card-accent.danger{border-top-color:var(--danger);}.card-accent.success{border-top-color:var(--success);}.card-accent.warn{border-top-color:var(--warn);}
 
 /* SUMMARY ROW — 5 columns for dashboard metrics */
 .summary-row-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
-.stat-card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border);box-shadow:var(--shadow);}
-.stat-label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
-.stat-value{font-size:28px;font-weight:800;color:var(--navy);}
-.stat-card.urgent .stat-value{color:var(--danger);}
-.stat-card.warn .stat-value{color:var(--warn);}
-.stat-card.ok .stat-value{color:var(--success);}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:22px 20px;border:1px solid var(--border);box-shadow:var(--shadow);border-left:4px solid var(--border);transition:all var(--transition-fast);position:relative;overflow:hidden;}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.stat-card::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:50%;opacity:.06;transform:translate(20px,-20px);}
+.stat-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+.stat-value{font-size:36px;font-weight:800;color:var(--navy);letter-spacing:-.02em;line-height:1;}
+.stat-sub{font-size:12px;color:var(--muted);margin-top:6px;font-weight:500;}
+.stat-card.urgent{border-left-color:var(--danger);}.stat-card.urgent .stat-value{color:var(--danger);}.stat-card.urgent::after{background:var(--danger);}
+.stat-card.warn{border-left-color:var(--warn);}.stat-card.warn .stat-value{color:var(--warn);}.stat-card.warn::after{background:var(--warn);}
+.stat-card.ok{border-left-color:var(--success);}.stat-card.ok .stat-value{color:var(--success);}.stat-card.ok::after{background:var(--success);}
+.stat-card.blue{border-left-color:var(--blue);}.stat-card.blue .stat-value{color:var(--blue);}.stat-card.blue::after{background:var(--blue);}
+.stat-card.accent{border-left-color:var(--accent);}.stat-card.accent::after{background:var(--accent);}
 
 /* BADGES */
 .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
@@ -72,38 +105,47 @@ main{max-width:1100px;margin:0 auto;padding:28px 24px;}
 .badge-risk-low{background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block;}
 
 /* BUTTONS */
-.btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:7px;}
-.btn-primary{background:var(--blue);color:#fff;}.btn-primary:hover{background:var(--blue-light);}
-.btn-success{background:var(--success);color:#fff;}.btn-success:hover{opacity:.9;}
-.btn-outline{background:#fff;color:var(--blue);border:1.5px solid var(--blue);}.btn-outline:hover{background:#eff6ff;}
-.btn-ghost{background:transparent;color:var(--muted);}.btn-ghost:hover{background:var(--bg);}
-.btn-danger{background:var(--danger);color:#fff;}.btn-danger:hover{opacity:.9;}
-.btn-sm{padding:6px 14px;font-size:13px;}
+.btn{padding:10px 22px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;transition:all var(--transition-fast);display:inline-flex;align-items:center;gap:7px;box-shadow:var(--shadow-sm);position:relative;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(0,87,184,.3);}.btn-primary:hover{background:var(--blue-light);box-shadow:0 4px 16px rgba(0,87,184,.35);transform:translateY(-1px);}
+.btn-success{background:var(--success);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.25);}.btn-success:hover{background:#15803d;box-shadow:0 4px 16px rgba(22,163,74,.3);transform:translateY(-1px);}
+.btn-outline{background:#fff;color:var(--blue);border:1.5px solid var(--blue);box-shadow:none;}.btn-outline:hover{background:#eff6ff;box-shadow:var(--shadow-sm);}
+.btn-ghost{background:transparent;color:var(--muted);box-shadow:none;}.btn-ghost:hover{background:var(--bg);}
+.btn-danger{background:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(220,38,38,.25);}.btn-danger:hover{background:#b91c1c;box-shadow:0 4px 16px rgba(220,38,38,.3);transform:translateY(-1px);}
+.btn-sm{padding:7px 14px;font-size:13px;}
 .btn-group{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;transform:none !important;}
 
 /* FORM */
 .form-group{margin-bottom:18px;}
-.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;transition:color var(--transition-fast);}
 .form-label .req{color:var(--danger);}
-textarea,input[type=text],input[type=file],select.form-control{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:.2s;color:var(--text);}
-textarea:focus,input[type=text]:focus,select.form-control:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,87,184,.1);}
+textarea,input[type=text],input[type=file],select.form-control{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:all .2s;color:var(--text);background:var(--surface);}
+textarea:focus,input[type=text]:focus,select.form-control:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,87,184,.12);background:#fff;}
+textarea:hover:not(:focus),input[type=text]:hover:not(:focus),select.form-control:hover:not(:focus){border-color:#cbd5e1;}
 textarea{resize:vertical;min-height:120px;}
+.form-error input,.form-error textarea,.form-error select{border-color:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.1);}
+.form-hint{font-size:12px;color:var(--muted);margin-top:4px;}.form-hint.error{color:var(--danger);}
 
 /* UPLOAD ZONE */
-.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s;background:#fafbff;position:relative;}
-.upload-zone:hover{border-color:var(--blue);background:#eff6ff;}
-.upload-zone.has-file{border-color:var(--success);background:#f0fdf4;}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all var(--transition);background:#fafbff;position:relative;}
+.upload-zone:hover{border-color:var(--blue);background:#eff6ff;transform:scale(1.01);}
+.upload-zone.has-file{border-color:var(--success);background:#f0fdf4;border-style:solid;}
+.upload-zone.dragover{border-color:var(--blue);background:#dbeafe;transform:scale(1.02);box-shadow:0 0 0 4px rgba(0,87,184,.15);}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
-.upload-icon{font-size:28px;margin-bottom:6px;}
+.upload-icon{font-size:32px;margin-bottom:8px;transition:transform .2s;}
+.upload-zone:hover .upload-icon{transform:translateY(-2px);}
 .upload-label{font-size:14px;font-weight:600;color:var(--blue);margin-bottom:4px;}
 .upload-hint{font-size:12px;color:var(--muted);}
 
 /* TABLES */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .ticket-table{width:100%;border-collapse:collapse;font-size:13px;}
-.ticket-table th{text-align:left;padding:10px 14px;background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
-.ticket-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
-.ticket-table tr:hover td{background:#f8faff;}
+.ticket-table th{text-align:left;padding:12px 16px;background:var(--bg);color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border);white-space:nowrap;}
+.ticket-table td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.ticket-table tr{transition:background var(--transition-fast);}
+.ticket-table tr:hover td{background:#f1f5ff;}
+.ticket-table td:first-child{font-weight:600;}
 
 .matrix-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;}
 .matrix-table th{text-align:left;padding:8px 12px;background:var(--bg);font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;}
@@ -170,15 +212,33 @@ textarea{resize:vertical;min-height:120px;}
 .expander-body.open{display:block;}
 
 /* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal{background:#fff;border-radius:16px;max-width:520px;width:90%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
-.modal h3{font-size:18px;font-weight:700;margin-bottom:8px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0);z-index:200;align-items:center;justify-content:center;transition:background .3s ease;}
+.modal-overlay.open{display:flex;animation:fadeOverlay .3s ease forwards;}
+@keyframes fadeOverlay{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.45)}}
+.modal{background:#fff;border-radius:var(--radius-lg);max-width:520px;width:90%;padding:32px;box-shadow:var(--shadow-lg);transform:scale(.9) translateY(20px);opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);}
+.modal-overlay.open .modal{transform:scale(1) translateY(0);opacity:1;}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:10px;}
 .modal p{font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
 
 /* TOAST */
-#toast{position:fixed;bottom:28px;right:28px;background:var(--navy);color:#fff;padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:.3s;z-index:300;pointer-events:none;max-width:400px;}
+#toast{position:fixed;bottom:28px;right:28px;padding:14px 22px 14px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transform:translateY(16px);transition:all .35s cubic-bezier(.4,0,.2,1);z-index:300;pointer-events:none;max-width:420px;display:flex;align-items:center;gap:10px;}
 #toast.show{opacity:1;transform:translateY(0);}
+#toast.toast-default{background:var(--navy);color:#fff;box-shadow:0 8px 32px rgba(0,30,78,.25);}
+#toast.toast-success{background:#14532d;color:#dcfce7;box-shadow:0 8px 32px rgba(22,163,74,.25);border-left:4px solid var(--success);}
+#toast.toast-error{background:#9f1239;color:#ffe4e6;box-shadow:0 8px 32px rgba(220,38,38,.25);border-left:4px solid var(--danger);}
+#toast.toast-warn{background:#78350f;color:#fef3c7;box-shadow:0 8px 32px rgba(217,119,6,.25);border-left:4px solid var(--warn);}
+
+/* LOADING SPINNER */
+.spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;}
+.spinner-sm{width:14px;height:14px;border-width:2px;}
+.spinner-lg{width:32px;height:32px;border-width:3px;}
+.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;z-index:10;border-radius:var(--radius);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:48px 24px;}
+.empty-state-icon{font-size:48px;margin-bottom:16px;opacity:.6;}
+.empty-state h3{font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.empty-state p{font-size:14px;color:var(--muted);margin-bottom:20px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.6;}
 
 /* ── STEPS 4-7: PORTED FROM CHECKER APP ──────────────────────────────────── */
 
@@ -262,8 +322,10 @@ textarea{resize:vertical;min-height:120px;}
 @media(max-width:700px){
   .summary-row-5{grid-template-columns:1fr 1fr;}
   .grid-2,.grid-3,.results-grid{grid-template-columns:1fr;}
-  .nav-links{display:none;}
-  nav{padding:0 16px;}
+  .nav-links{display:none !important;}
+  .hamburger{display:block;}
+  .role-badge span:not(.role-dot){display:none;}
+  nav{padding:0 16px;height:56px;}
   main{padding:16px;}
   .ticket-table{font-size:12px;}
   .ticket-table th,.ticket-table td{padding:8px 10px;}
@@ -271,6 +333,8 @@ textarea{resize:vertical;min-height:120px;}
   .step-line{display:none;}
   .amounts-verify-bar{flex-direction:column;gap:8px;}
   .av-sep{display:none;}
+  .stat-value{font-size:28px;}
+  .modal{padding:20px;width:95%;}
 }
 </style>
 </head>
@@ -285,7 +349,12 @@ textarea{resize:vertical;min-height:120px;}
     <button class="nav-btn" onclick="showPage('emoney')" id="nav-emoney">E-Money Review</button>
   </div>
   <div class="nav-right">
-    <select id="role-select" onchange="switchRole(this.value)">
+    <button class="hamburger" onclick="document.querySelector('.mobile-menu').classList.toggle('open')">&#9776;</button>
+    <div class="role-badge role-intake" id="role-badge" onclick="cycleRole()">
+      <span class="role-dot"></span>
+      <span id="role-label">Intake / Maker</span>
+    </div>
+    <select id="role-select" onchange="switchRole(this.value)" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;">
       <option value="Intake / Maker">Intake / Maker</option>
       <option value="Finance">Finance</option>
       <option value="E-Money">E-Money</option>
@@ -294,6 +363,13 @@ textarea{resize:vertical;min-height:120px;}
     <span class="nav-tag" onclick="document.getElementById('demo-modal').classList.add('open')">DEMO</span>
   </div>
 </nav>
+
+<div class="mobile-menu">
+  <button class="nav-btn" onclick="showPage('dashboard');this.parentElement.classList.remove('open')">Dashboard</button>
+  <button class="nav-btn" onclick="showPage('emails');this.parentElement.classList.remove('open')">Incoming Emails</button>
+  <button class="nav-btn" onclick="showPage('finance');this.parentElement.classList.remove('open')">Finance Approval</button>
+  <button class="nav-btn" onclick="showPage('emoney');this.parentElement.classList.remove('open')">E-Money Review</button>
+</div>
 
 <main>
   <div class="page active" id="page-dashboard"></div>
@@ -641,6 +717,7 @@ function initState(){
   if(!state.parsedEmails) state.parsedEmails = new Set();
   if(Object.keys(state.tickets).length === 0) seedDemoTickets();
   document.getElementById('role-select').value = state.currentRole;
+  switchRole(state.currentRole);
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -748,11 +825,15 @@ function openEmoneyTicket(tid){
   else showPage('emoney-prepare');
 }
 
-function showToast(msg){
+function showToast(msg, type){
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
+  t.className = '';
+  const icons = {success:'\u2714', error:'\u2718', warn:'\u26A0'};
+  const cls = type || 'default';
+  t.innerHTML = (icons[type] ? '<span>'+icons[type]+'</span>' : '') + '<span>'+msg+'</span>';
+  t.classList.add('toast-'+cls, 'show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -779,12 +860,41 @@ function showPage(id){
   else if(id==='emoney-mapping') renderEmoneyMapping();
   else if(id==='emoney-monitoring') renderEmoneyMonitoring();
   else if(id==='emoney-close') renderEmoneyClose();
+
+  // Breadcrumbs for E-Money sub-pages
+  const bcNames = {'emoney-prepare':'Prepare Files','emoney-checker':'Checker Review','emoney-mapping':'Group Mapping','emoney-monitoring':'Monitoring','emoney-close':'Close Case'};
+  if(bcNames[id]){
+    const pg = document.getElementById('page-'+id);
+    if(pg && !pg.querySelector('.breadcrumbs')){
+      const bc = document.createElement('div');
+      bc.className = 'breadcrumbs';
+      bc.innerHTML = '<a href="#" onclick="showPage(\'dashboard\');return false">Dashboard</a><span class="bc-sep">\u203A</span><a href="#" onclick="showPage(\'emoney\');return false">E-Money</a><span class="bc-sep">\u203A</span><span class="bc-current">'+bcNames[id]+'</span>';
+      pg.insertBefore(bc, pg.firstChild);
+    }
+  }
 }
 
 function switchRole(role){
   state.currentRole = role;
   saveState();
+  const badge = document.getElementById('role-badge');
+  const label = document.getElementById('role-label');
+  const select = document.getElementById('role-select');
+  if(label) label.textContent = role;
+  if(select) select.value = role;
+  if(badge){
+    badge.className = 'role-badge';
+    if(role.includes('Intake')) badge.classList.add('role-intake');
+    else if(role.includes('Finance')) badge.classList.add('role-finance');
+    else badge.classList.add('role-emoney');
+  }
   showPage(currentPage);
+}
+
+function cycleRole(){
+  const roles = ['Intake / Maker','Finance','E-Money'];
+  const idx = roles.indexOf(state.currentRole);
+  switchRole(roles[(idx+1)%roles.length]);
 }
 
 // ─── PAGE: DASHBOARD ──────────────────────────────────────────────────────────
@@ -804,20 +914,20 @@ function renderDashboard(){
     <div class="section-title">\uD83C\uDF0A Wave EMI Pipeline Dashboard</div>
     <div class="section-sub">Unified command center \u2014 Steps 1\u20137: Intake → Approval → Disbursement → Close</div>
     <div class="summary-row-5">
-      <div class="stat-card"><div class="stat-label">\uD83D\uDCE5 New Emails</div><div class="stat-value">${newEmails}</div></div>
-      <div class="stat-card ${pending>0?'warn':''}"><div class="stat-label">\u23F3 Pending</div><div class="stat-value">${pending}</div></div>
-      <div class="stat-card ${ready>0?'ok':''}"><div class="stat-label">\u2705 Ready</div><div class="stat-value">${ready}</div></div>
-      <div class="stat-card ${inProg>0?'ok':''}"><div class="stat-label">\uD83D\uDD04 Processing</div><div class="stat-value">${inProg}</div></div>
-      <div class="stat-card"><div class="stat-label">\u2705 Completed</div><div class="stat-value">${completed}</div></div>
+      <div class="stat-card accent"><div class="stat-label">New Emails</div><div class="stat-value">${newEmails}</div><div class="stat-sub">awaiting intake</div></div>
+      <div class="stat-card ${pending>0?'warn':''}"><div class="stat-label">Pending</div><div class="stat-value">${pending}</div><div class="stat-sub">need action</div></div>
+      <div class="stat-card ${ready>0?'ok':'blue'}"><div class="stat-label">Ready</div><div class="stat-value">${ready}</div><div class="stat-sub">for checker</div></div>
+      <div class="stat-card ${inProg>0?'blue':''}"><div class="stat-label">Processing</div><div class="stat-value">${inProg}</div><div class="stat-sub">in pipeline</div></div>
+      <div class="stat-card ok"><div class="stat-label">Completed</div><div class="stat-value">${completed}</div><div class="stat-sub">disbursed</div></div>
     </div>
     ${mismatches>0||highRisk>0?`<div style="display:flex;gap:12px;margin-bottom:16px">${mismatches>0?`<div class="alert alert-warn" style="flex:1;margin:0">\u26A0\uFE0F ${mismatches} amount mismatch(es)</div>`:''}${highRisk>0?`<div class="alert alert-danger" style="flex:1;margin:0">\uD83D\uDD34 ${highRisk} high-risk ticket(s)</div>`:''}</div>`:''}
   `;
 
   if(tickets.length === 0){
-    html += '<div class="alert alert-info">\uD83D\uDCE7 No tickets yet. Go to Incoming Emails to parse an email.</div>';
+    html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\uD83D\uDCE7</div><h3>No tickets yet</h3><p>Head over to Incoming Emails to parse your first disbursement request and create a ticket.</p><button class="btn btn-primary" onclick="showPage(\'emails\')">Go to Incoming Emails</button></div></div>';
   } else {
     html += `<div class="card"><div class="card-header"><div class="card-title">All Tickets</div></div>
-      <table class="ticket-table"><thead><tr>
+      <div class="table-scroll"><table class="ticket-table"><thead><tr>
         <th>ID</th><th>Company</th><th>Type</th><th>Amount</th>
         <th>Track A (Pre-checks)</th><th>Track B (Finance)</th><th>Status</th><th>Risk</th>
       </tr></thead><tbody>`;
@@ -834,7 +944,7 @@ function renderDashboard(){
         <td>${statusBadgeHtml(t.status)}</td><td>${riskBadgeHtml(t.risk_level)}</td>
       </tr>`;
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
   }
 
   // Activity log
@@ -998,7 +1108,7 @@ function handleParseEmail(emailId){
   state.parsedEmails.add(emailId);
   saveState();
   logActivity(`${tid} created from ${email.company} email`);
-  showToast(`\u2705 Ticket ${tid} created`);
+  showToast(`Ticket ${tid} created`, 'success');
   renderEmails();
 }
 
@@ -1089,7 +1199,7 @@ function handleBankSlipUpload(input, emailId, ticketId){
 function handleSaveSubmit(emailId, ticketId){
   const employees = pendingEmployeeData[emailId];
   if(!employees || employees.length === 0){
-    showToast('\u26A0\uFE0F Upload an employee list first');
+    showToast('Upload an employee list first', 'warn');
     return;
   }
 
@@ -1114,7 +1224,7 @@ function handleSaveSubmit(emailId, ticketId){
   });
 
   logActivity(`${ticketId} pre-checks complete \u2014 ${employees.length} employees`);
-  showToast(`\u2705 ${ticketId} submitted for Finance Approval`);
+  showToast(`${ticketId} submitted for Finance Approval`, 'success');
   renderEmails();
 }
 
@@ -1133,7 +1243,7 @@ function renderFinance(){
   let html = '<div class="section-title">\uD83D\uDCB0 Finance Approval</div><div class="section-sub">Review and approve disbursement tickets awaiting finance sign-off.</div>';
 
   if(pending.length === 0){
-    html += '<div class="alert alert-success">\u2705 No tickets awaiting Finance approval.</div>';
+    html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\u2705</div><h3>All clear</h3><p>No tickets awaiting Finance approval right now. New tickets will appear here after the Intake team submits them.</p></div></div>';
     el.innerHTML = html;
     return;
   }
@@ -1209,7 +1319,7 @@ function handleFinanceApprove(tid){
   const nameEl = document.getElementById('appname-'+tid);
   const notesEl = document.getElementById('notes-'+tid);
   const name = nameEl ? nameEl.value.trim() : '';
-  if(!name){ showToast('\u26A0\uFE0F Please enter your name before approving'); return; }
+  if(!name){ showToast('Please enter your name before approving', 'warn'); return; }
 
   updateTicket(tid, {
     finance_status:'APPROVED',
@@ -1218,7 +1328,7 @@ function handleFinanceApprove(tid){
     finance_notes:(notesEl?notesEl.value.trim():'')||null,
   });
   logActivity(`${tid} approved by Finance (${name})`);
-  showToast(`\u2705 ${tid} approved \u2014 Ready for E-Money team`);
+  showToast(`${tid} approved \u2014 Ready for E-Money team`, 'success');
   renderFinance();
 }
 
@@ -1230,7 +1340,7 @@ function handleFinanceReject(tid){
     finance_notes:'Rejected by Finance.',
   });
   logActivity(`${tid} rejected by Finance`);
-  showToast(`\u274C ${tid} rejected`);
+  showToast(`${tid} rejected`, 'error');
   renderFinance();
 }
 
@@ -1251,7 +1361,7 @@ function renderEmoney(){
   let html = '<div class="section-title">\uD83D\uDD01 E-Money Processing</div><div class="section-sub">Manage the full disbursement pipeline: prepare files, checker review, monitoring, and case closure.</div>';
 
   if(actionable.length === 0){
-    html += '<div class="alert alert-info">No tickets ready for E-Money yet. Tickets appear here after Finance approval.</div>';
+    html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\uD83D\uDD01</div><h3>No tickets yet</h3><p>Tickets will appear here after Finance approves them. Check back after the Finance team reviews pending requests.</p></div></div>';
     el.innerHTML = html;
     return;
   }
@@ -1325,13 +1435,13 @@ function handleExportJson(tid){
   a.href = url; a.download = tid+'_export.json'; a.click();
   URL.revokeObjectURL(url);
   logActivity(`${tid} data exported for checker`);
-  showToast(`\uD83D\uDCE5 ${tid} exported`);
+  showToast(`${tid} exported`, 'success');
 }
 
 function handleMarkSent(tid){
   updateTicket(tid, {sent_to_checker:true});
   logActivity(`${tid} marked as sent to E-Money checker`);
-  showToast(`\u2705 ${tid} sent to checker`);
+  showToast(`${tid} sent to checker`, 'success');
   renderEmoney();
 }
 
@@ -1528,13 +1638,13 @@ function downloadEmoneyCSV(idx){
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download = f.name; a.click();
-  showToast('Downloaded: '+f.name);
+  showToast('Downloaded: '+f.name, 'success');
 }
 
 function emoneyFilesDone(){
   updateTicket(currentEmoneyTid, {files_prepared:true});
   logActivity(`${currentEmoneyTid} files prepared — sent to Checker`);
-  showToast('Files ready — proceed to Checker Review');
+  showToast('Files ready — proceed to Checker Review', 'success');
   showPage('emoney-checker');
 }
 
@@ -1589,17 +1699,17 @@ function renderEmoneyChecker(){
 
 function approveEmoneyChecker(){
   const name = document.getElementById('ec-checker-name').value.trim();
-  if(!name){showToast('Please enter your name.');return;}
+  if(!name){showToast('Please enter your name.', 'warn');return;}
   const ticket = state.tickets[currentEmoneyTid];
   if(ticket.type === 'SalaryToOTC'){
     updateTicket(currentEmoneyTid, {checker_name:name, mapping_in_progress:true, mapping_complete:false});
     logActivity(`${currentEmoneyTid} approved by Checker (${name}) — proceed to Group Mapping`);
-    showToast('Approved by '+name+' — proceed to Group Mapping');
+    showToast('Approved by '+name+' — proceed to Group Mapping', 'success');
     showPage('emoney-mapping');
   } else {
     updateTicket(currentEmoneyTid, {checker_name:name, disbursing:true});
     logActivity(`${currentEmoneyTid} approved by Checker (${name}) — starting disbursement`);
-    showToast('Approved by '+name+' — starting disbursement');
+    showToast('Approved by '+name+' — starting disbursement', 'success');
     showPage('emoney-monitoring');
   }
 }
@@ -1607,7 +1717,7 @@ function approveEmoneyChecker(){
 function rejectEmoneyChecker(){
   updateTicket(currentEmoneyTid, {files_prepared:false, checker_name:null});
   logActivity(`${currentEmoneyTid} rejected by Checker — sent back for revision`);
-  showToast('Request sent back for revision');
+  showToast('Request sent back for revision', 'warn');
   showPage('emoney');
 }
 
@@ -1662,13 +1772,13 @@ function downloadEmoneyMapCSV(type){
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download = (type==='map'?'MapAgent':'UnmapAgent')+'.csv'; a.click();
-  showToast('Downloaded: '+a.download);
+  showToast('Downloaded: '+a.download, 'success');
 }
 
 function completeEmoneyMapping(){
   updateTicket(currentEmoneyTid, {mapping_in_progress:false, mapping_complete:true, disbursing:true});
   logActivity(`${currentEmoneyTid} mapping complete — starting disbursement`);
-  showToast('Mapping complete — starting disbursement');
+  showToast('Mapping complete — starting disbursement', 'success');
   showPage('emoney-monitoring');
 }
 
@@ -1897,7 +2007,7 @@ function closeEmoneyCase(){
   document.getElementById('modal-emoney-client').textContent = ticket.company;
   document.getElementById('modal-emoney-success').classList.add('open');
   logActivity(`${currentEmoneyTid} case closed and archived`);
-  showToast('Case archived · Confirmation email copied to clipboard');
+  showToast('Case archived \u00b7 Confirmation email copied to clipboard', 'success');
 }
 
 function closeEmoneyModal(){
@@ -1907,7 +2017,7 @@ function closeEmoneyModal(){
 
 function copyEmoneyEmail(){
   const txt = document.getElementById('ecl-email-draft').value;
-  navigator.clipboard.writeText(txt).then(()=>showToast('Email copied to clipboard!'));
+  navigator.clipboard.writeText(txt).then(()=>showToast('Email copied to clipboard!', 'success'));
 }
 
 function downloadEmoneyReport(){
@@ -1940,7 +2050,7 @@ function downloadEmoneyReport(){
   a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download = `Report_${r.refNo}.csv`;
   a.click();
-  showToast('Report downloaded');
+  showToast('Report downloaded', 'success');
 }
 
 // ─── N8N WEBHOOK INTAKE ──────────────────────────────────────────────────────
@@ -1994,7 +2104,7 @@ function createTicketFromN8n(data){
   state.tickets[tid].risk_level = computeRisk(state.tickets[tid]);
   saveState();
   logActivity(`${tid} auto-created via n8n from ${data.company||'email'}`);
-  showToast('\uD83E\uDD16 '+tid+' created automatically via n8n');
+  showToast(tid+' created automatically via n8n', 'success');
 }
 
 // ─── KEYBOARD SHORTCUT ────────────────────────────────────────────────────────
@@ -2006,6 +2116,19 @@ document.addEventListener('keydown', function(e){
 initState();
 checkN8nWebhook();
 renderDashboard();
+
+// Drag-and-drop visual feedback for upload zones
+document.addEventListener('dragover', function(e){
+  const z = e.target.closest('.upload-zone');
+  if(z){ e.preventDefault(); z.classList.add('dragover'); }
+});
+document.addEventListener('dragleave', function(e){
+  const z = e.target.closest('.upload-zone');
+  if(z) z.classList.remove('dragover');
+});
+document.addEventListener('drop', function(e){
+  document.querySelectorAll('.upload-zone.dragover').forEach(function(z){z.classList.remove('dragover');});
+});
 
 </script>
 </body>
