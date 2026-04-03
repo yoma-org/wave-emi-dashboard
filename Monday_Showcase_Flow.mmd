@@ -1,0 +1,71 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#0057B8', 'primaryTextColor': '#fff', 'lineColor': '#334155', 'fontSize': '14px'}}}%%
+
+flowchart TD
+    subgraph STEP1["Step 1: Email Intake"]
+        A["Client sends payroll email<br/>(company, amount, approvers)"]
+        B["Control Mailbox<br/>(Gmail - monitored 24/7)"]
+        A -->|"email"| B
+    end
+
+    subgraph STEP2["Step 2: AI Extraction"]
+        C["n8n Pipeline auto-fetches email"]
+        D["AI parses email content<br/>(Groq / Llama 3.3)"]
+        E["Extract: Company, Amount,<br/>Type, Approvers, Metadata"]
+        C --> D --> E
+    end
+
+    subgraph STEP3["Step 3: Validation"]
+        F["Authority Matrix Check<br/>(Sales HOD + Finance Manager)"]
+        G{All approvals<br/>present?}
+        F --> G
+    end
+
+    subgraph STEP4["Step 4: Ticket + Notify"]
+        H["Auto-create ticket<br/>on Dashboard"]
+        I["Send notification email<br/>with Dashboard link"]
+        H --- I
+    end
+
+    subgraph STEP5["Step 5: Finance Review"]
+        J["Finance opens Dashboard"]
+        K["Review ticket details<br/>+ approval matrix"]
+        L["Approve / Reject"]
+        J --> K --> L
+    end
+
+    subgraph STEP6["Step 6: CSV Generation"]
+        M["Generate 7 Utiba CSV files<br/>(SalaryToMA, SalaryToOTC,<br/>Fund Movement, Fee, Map/Unmap)"]
+        N["Checker Review<br/>+ Approve"]
+        M --> N
+    end
+
+    B --> C
+    E --> F
+    G -->|"NORMAL"| H
+    G -->|"MISSING_APPROVAL"| H
+    I --> J
+    L -->|"Approved"| M
+    N --> O["Ready for Disbursement"]
+
+    classDef step1 fill:#001E4E,color:#fff,stroke:#001E4E
+    classDef step2 fill:#0057B8,color:#fff,stroke:#0057B8
+    classDef step3 fill:#d97706,color:#fff,stroke:#d97706
+    classDef step4 fill:#FF6D5A,color:#fff,stroke:#FF6D5A
+    classDef step5 fill:#7c3aed,color:#fff,stroke:#7c3aed
+    classDef step6 fill:#0891b2,color:#fff,stroke:#0891b2
+    classDef done fill:#16a34a,color:#fff,stroke:#16a34a
+
+    class A,B step1
+    class C,D,E step2
+    class F,G step3
+    class H,I step4
+    class J,K,L step5
+    class M,N step6
+    class O done
+
+    style STEP1 fill:#f0f4ff,color:#001E4E,stroke:#001E4E
+    style STEP2 fill:#eff6ff,color:#0057B8,stroke:#0057B8
+    style STEP3 fill:#fffbeb,color:#92400e,stroke:#d97706
+    style STEP4 fill:#fff5f3,color:#c2410c,stroke:#FF6D5A
+    style STEP5 fill:#f5f3ff,color:#5b21b6,stroke:#7c3aed
+    style STEP6 fill:#ecfeff,color:#155e75,stroke:#0891b2
