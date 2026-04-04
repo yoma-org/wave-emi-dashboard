@@ -1,76 +1,109 @@
 # V3 Vision Pipeline — Deployment & Testing Guide
 
-## Progress
+## Quick Status
 
 - [x] Step 0: Groq Vision API test — PASSED (llama-4-scout model available)
-- [x] Step 1: v3 JSON pushed to GitHub
-- [x] Step 2: v3 imported into n8n Cloud, Gmail credentials set
-- [x] Step 2b: Gmail Trigger upgraded to v1.3, Download Attachments ON (under Parameters > Options)
-- [x] Step 3: Test email sent WITH attachment to xaondk@gmail.com
-- [x] Step 4: Gmail Trigger output verified — `attachment_0` binary present (727 kB, image/png)
-- [x] Deactivated v2 pipeline
-- [x] Step 5: Set Groq API key in Vision Process node
-- [ ] **Step 5b: Fix Code node mode — re-import v3 JSON** ← YOU ARE HERE
-- [ ] Step 6: Test full pipeline execution
+- [x] Step 1: v3 JSON built with all fixes, pushed to GitHub
+- [x] Step 2: Gmail Trigger verified — attachment_0 binary present (727 kB, image/png)
+- [x] Step 3: Deactivated v2 pipeline
+- [ ] **Step 4: Import v3 into n8n Cloud** <-- YOU ARE HERE
+- [ ] Step 5: Set credentials (Gmail + Groq API key)
+- [ ] Step 6: Test full pipeline with attachment
 - [ ] Step 7: Test without attachment (v2 compatibility)
 - [ ] Step 8: Publish to production
 
 ---
 
-## Step 5: Set Groq API Key in Vision Process Node — DONE
+## What's Fixed in This JSON (all debugged issues resolved)
 
-~~The Vision Process Code node has a placeholder. Replace `REPLACE_WITH_GROQ_API_KEY` with your real key.~~
-
-**COMPLETED** — key is set. But also fixed the `Bearer ` prefix issue.
-
----
-
-## Step 5b: Fix Code Node Mode — Re-import v3 JSON
-
-**Problem found:** `this.getWorkflowStaticData is not a function` error.
-**Root cause:** Code nodes were in "Run Once for All Items" mode, where `this.*` helpers aren't available.
-**Fix:** Updated v3 JSON sets "Run Once for Each Item" mode for Prepare for AI v3 and Vision Process.
-
-### How to apply the fix:
-
-**Option A — Re-import (cleanest):**
-1. In n8n Cloud, **delete the current v3 workflow**
-2. Import the updated `n8n-workflow-v3.json` from GitHub (it's been pushed)
-3. Set credentials again: Gmail OAuth2 on Gmail Trigger, Gmail notifications
-4. The Groq API key is already embedded in the updated code
-5. Gmail Trigger: make sure it's upgraded to v1.3 with Download Attachments ON
-
-**Option B — Manual fix (if you don't want to re-import):**
-1. Open **Prepare for AI v3** node
-2. Change **Mode** dropdown from "Run Once for All Items" → **"Run Once for Each Item"**
-3. Replace ALL the code with the updated version (see `prep_code_v2.js` below)
-4. Open **Vision Process** node
-5. Change **Mode** dropdown → **"Run Once for Each Item"**
-6. Replace ALL the code with the updated version (see `vision_code_v2.js` below)
-
-### Key code changes (for Option B):
-- `$input.all()` + for loop → `$input.item` (single item)
-- `itemIndex` → `$itemIndex` (n8n built-in variable)
-- `results.push({json:...})` + `return results` → `return {json:...}` (single return)
-- `continue` → `return []` (skip item)
-
-### Updated code files (for reference):
-- Prepare for AI v3: `C:\Users\xaosp\AppData\Local\Temp\v3build\prep_code_v2.js`
-- Vision Process: `C:\Users\xaosp\AppData\Local\Temp\v3build\vision_code_v2.js`
+| Issue | Fix Applied |
+|-------|------------|
+| `this.getWorkflowStaticData is not a function` | Replaced with `$getWorkflowStaticData('global')` (Task Runner compatible) |
+| `this.helpers.httpRequest` not available | Replaced with `helpers.httpRequest()` (no `this.`) |
+| `this.helpers.getBinaryDataBuffer` not available | Replaced with `helpers.getBinaryDataBuffer()` (no `this.`) |
+| Code node mode wrong | Both Code nodes set to `"mode": "runOnceForEachItem"` |
+| Gmail Trigger missing Download Attachments | typeVersion 1.3, `downloadAttachments: true` under `options` |
+| GitHub Push Protection blocking API keys | All keys replaced with `REPLACE_WITH_GROQ_API_KEY` placeholder |
+| Missing `Bearer` prefix on API key | Already included in header value — just paste key after `Bearer ` |
 
 ---
 
-## Step 6: Test Full Pipeline Execution
+## Step 4: Import v3 into n8n Cloud
 
-1. Make sure the Gmail Trigger still has the test email loaded (re-fetch if needed)
-2. Click **Test Workflow** in n8n (runs all nodes in sequence)
-3. Check each node output — click on each node to see its results:
+1. **Delete** the current v3 workflow in n8n Cloud (if any exists)
+2. Download `n8n-workflow-v3.json` from GitHub (or use the local file)
+3. In n8n Cloud: **Add Workflow** > **Import from file** > select the JSON
+4. Verify you see **9 nodes** in the workflow canvas:
+   - Webhook Trigger
+   - Gmail Trigger
+   - Prepare for AI v3
+   - Groq AI Extract
+   - Vision Process
+   - AI Parse & Validate v3
+   - Route by Source
+   - Respond with Dashboard URL
+   - Send Gmail Notification
+
+---
+
+## Step 5: Set Credentials
+
+### 5a: Gmail OAuth2 (2 nodes)
+
+1. **Gmail Trigger** > Parameters > Credential > select your Gmail OAuth2
+2. **Send Gmail Notification** > Parameters > Credential > select your Gmail OAuth2
+
+### 5b: Verify Gmail Trigger Settings
+
+After import, double-check:
+- **Parameters > Options > Download Attachments** = ON
+- **Simplify** = OFF
+- If Download Attachments is missing, upgrade node to v1.3 (click version at bottom of Settings tab)
+
+### 5c: Groq API Key (2 places)
+
+Your key: (use your Groq API key from https://console.groq.com/keys)
+
+**Place 1 — Groq AI Extract (HTTP Request node):**
+- Click the node > Headers > Authorization
+- Replace `REPLACE_WITH_GROQ_API_KEY` so the full value reads:
+  ```
+  Bearer <YOUR_GROQ_API_KEY>
+  ```
+- **Keep the `Bearer ` prefix!** (with space after it)
+
+**Place 2 — Vision Process (Code node):**
+- Click the node > find `REPLACE_WITH_GROQ_API_KEY` in the code (~line 43)
+- Replace so the line reads:
+  ```javascript
+  'Authorization': 'Bearer <YOUR_GROQ_API_KEY>',
+  ```
+
+### 5d: Verify Code Node Modes
+
+Should be correct from import, but double-check:
+- **Prepare for AI v3** > Mode: **Run Once for Each Item**
+- **Vision Process** > Mode: **Run Once for Each Item**
+
+### 5e: Verify Code Has No `this.` (Quick Sanity Check)
+
+Click into each Code node and search (Ctrl+F) for `this.` — there should be **zero** matches.
+- Prepare for AI v3: should use `$getWorkflowStaticData` and `helpers.getBinaryDataBuffer`
+- Vision Process: should use `$getWorkflowStaticData` and `helpers.httpRequest`
+
+---
+
+## Step 6: Test Full Pipeline (WITH Attachment)
+
+1. Load the test email in Gmail Trigger (Fetch Test Event — use the email with PNG attachment)
+2. Click **Test Workflow** (runs all nodes)
+3. Check each node output:
 
 ### Node: Prepare for AI v3
 | Field | Expected |
 |-------|----------|
 | `vision_eligible` | `true` |
-| `attachment_base64` | Object with base64 data (long string) |
+| `attachment_base64` | Object with `base64`, `mimeType`, `filename` |
 | `attachment_count` | `1` |
 | `_source` | `email` |
 | `from_email` | sender's address |
@@ -79,22 +112,16 @@
 ### Node: Groq AI Extract
 | Field | Expected |
 |-------|----------|
-| `choices[0].message.content` | JSON string with company, amount, approvers |
-
-This is text extraction (same as v2). Should parse ACME Innovations, 25,000,000, approvers.
+| `choices[0].message.content` | JSON with company, amount, approvers |
 
 ### Node: Vision Process
 | Field | Expected |
 |-------|----------|
 | `_vision_status` | `"success"` |
 | `_vision_result.doc_type` | `"bank_slip"` or similar |
-| `_vision_result.total_amount` | A number (amount from the image) |
-| `_vision_result.confidence` | 0.0 to 1.0 (higher is better) |
-| `_vision_result.authorized_signers` | Array of signer objects |
+| `_vision_result.total_amount` | A number from the image |
+| `_vision_result.confidence` | 0.0 to 1.0 |
 | `attachment_base64` | Should NOT be present (cleared after use) |
-
-**If `_vision_status` is `"api_error"`:** Check the Groq API key is correct.
-**If `_vision_status` is `"none"`:** The node didn't attempt vision — check `vision_eligible` in Prepare node.
 
 ### Node: AI Parse & Validate v3
 | Field | Expected |
@@ -103,19 +130,28 @@ This is text extraction (same as v2). Should parse ACME Innovations, 25,000,000,
 | `vision_confidence` | Same as above |
 | `amount` | From email text |
 | `amount_on_document` | From bank slip image |
-| `scenario` | `NORMAL` if amounts match, `AMOUNT_MISMATCH` if >1% diff |
+| `scenario` | `NORMAL` or `AMOUNT_MISMATCH` |
 | `dashboard_url` | Long URL with base64 ticket |
 
-### Node: Route by Source → Send Gmail Notification
-- Should send branded notification email to xaondk@gmail.com
-- Email contains dashboard URL
-- Open the URL — go to Finance page — should show **Vision AI block** (purple border)
+### Node: Send Gmail Notification
+- Branded email sent to xaondk@gmail.com
+- Contains dashboard URL
+- Open URL > Finance page > should show Vision AI block
+
+**Troubleshooting:**
+| Symptom | Fix |
+|---------|-----|
+| `_vision_status: "api_error"` | Check Groq API key in Vision Process code |
+| `_vision_status: "none"` | Check `vision_eligible` in Prepare node |
+| `this.getWorkflowStaticData is not a function` | Code still has old `this.` syntax — re-import JSON |
+| `getBinaryDataBuffer` error | n8n Cloud version must be >= 1.114.0 |
+| No `attachment_0` in Gmail Trigger | Download Attachments not ON (Parameters > Options) |
 
 ---
 
 ## Step 7: Test WITHOUT Attachment (v2 Compatibility)
 
-After Step 6 passes, send another email to **xaondk@gmail.com** with NO attachment:
+Send a new email to **xaondk@gmail.com** with NO attachment:
 
 **Subject:**
 ```
@@ -132,82 +168,42 @@ Approved by:
 - Daw Su Su Lwin, Finance Manager — Approved
 ```
 
-**Expected results (should behave identically to v2):**
+**Expected (should behave like v2):**
 - `vision_eligible: false`
 - `_vision_status: "none"`
 - `vision_parsed: false`
-- No Vision AI block on dashboard Finance page
 - Text extraction + authority matrix + notification all work normally
+- No Vision AI block on dashboard Finance page
 
 ---
 
 ## Step 8: Publish to Production
 
-Once Steps 6 and 7 both pass:
-
-1. In n8n Cloud, toggle the v3 workflow **Active**
-2. Keep **v2 deactivated** (both trigger on same Gmail — xaondk@gmail.com)
-3. v3 handles everything v2 did + vision — no functionality loss
+1. Toggle v3 workflow **Active** in n8n Cloud
+2. Keep **v2 deactivated** (both trigger on xaondk@gmail.com)
+3. v3 handles everything v2 did + vision
 
 **Rollback:** Deactivate v3, reactivate v2. They are independent workflows.
 
-**Before Monday demo:** If demoing v2, reactivate v2 and deactivate v3.
-
 ---
 
-## Vercel Dashboard
+## Reference Notes
 
-Auto-deployed when we pushed to GitHub. No action needed.
+### Pipeline Mailbox
+- **xaondk@gmail.com** (NOT dknguyen0105vietnam@gmail.com)
 
-**Verify:** Open https://wave-emi-dashboard.vercel.app — should load normally.
+### n8n Task Runner (Cloud 2.14.2)
+Code nodes run in a JS sandbox. The old `this.*` API does NOT work:
+- `this.getWorkflowStaticData()` --> `$getWorkflowStaticData()`
+- `this.helpers.httpRequest()` --> `helpers.httpRequest()`
+- `this.helpers.getBinaryDataBuffer()` --> `helpers.getBinaryDataBuffer()`
 
-Vision display only appears on Finance page when a ticket has `vision_parsed: true`.
+### Rate Limits
+- Static Data only persists in **production** (active workflow), NOT manual test clicks
+- 100 text calls/day, 20 vision calls/day, circuit breaker at 3 consecutive errors
+- For demo: don't worry about limits — plenty of headroom
 
----
-
-## Tuesday Demo Script
-
-1. Open dashboard, show empty state (Ctrl+Shift+R to clear)
-2. Send test email WITH bank slip attachment to xaondk@gmail.com
-3. Wait ~30-60 seconds for pipeline to process
-4. Open notification email → click dashboard URL
-5. Show Finance page:
-   - Ticket details (company, amount, type)
-   - **Vision AI block** — document type, confidence %, amount match/mismatch
-   - Authority matrix
-6. Key talking point: "The AI reads both the email text AND the bank slip image, then cross-validates the amounts automatically"
-
----
-
-## Gmail Trigger Setup Notes
-
-- **Node version:** Must be v1.3 (upgrade from v1 if needed)
-- **Download Attachments:** Found under **Parameters > Options** (not Settings tab)
-- **Simplify:** OFF (we need full email headers for metadata extraction)
-- **Poll:** Every Minute
-- **Credential:** Gmail OAuth2 API (same as v2)
-
----
-
-## Rate Limit Notes
-
-Rate limits use n8n Workflow Static Data — they only persist in **production** (activated workflow), NOT in manual "Test Workflow" clicks.
-
-For demo: don't worry about hitting limits — 20 vision calls/day and 100 text calls/day is plenty.
-
----
-
-## Troubleshooting
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| No `attachment_0` in Gmail Trigger | Download Attachments not ON | Parameters > Options > toggle ON |
-| Gmail Trigger missing Download Attachments | Node version too old | Upgrade to v1.3 (click version text at bottom of Settings) |
-| Vision returns 401 | API key placeholder not replaced | Set real key in Vision Process node code |
-| Vision returns 404 | Model unavailable on Groq | Check Groq console for model availability |
-| `_vision_status: "rate_limited"` | Hit 20 vision calls/day | Wait until next day |
-| `_vision_status: "circuit_breaker"` | 3 consecutive vision errors | Fix root cause; resets on next success or next day |
-| Loop guard skips email | Subject contains "EMI Pipeline:" | Correct behavior — filtering notification emails |
-| Dashboard missing vision block | `vision_parsed` is false | Check Vision Process node output |
-| `getBinaryDataBuffer` error | n8n Cloud version too old | Need n8n >= v1.114.0 |
-| Duplicate emails processing | Both v2 and v3 active | Deactivate one — only one pipeline should be active |
+### Gmail Trigger v1.3
+- Download Attachments toggle: **Parameters > Options** (NOT Settings tab)
+- Simplify: OFF (need full headers)
+- Attachments arrive as binary: `attachment_0`, `attachment_1`, etc.
