@@ -138,9 +138,29 @@
 
 ---
 
+## Cross-Validation Visual Enhancement (April 5, 2026)
+
+**Context:** After analyzing whether to add more comparison fields (company name, currency, payment period, etc.), concluded that amount is the only cross-validation that prevents financial loss. Other fields either aren't extracted by both AIs or don't represent operational risk. Instead, enhanced the VISUAL impact of the existing amount comparison.
+
+**Changes (JS only, `renderAIPipelineSection()`):**
+1. **Amount field highlighting on BOTH cards:**
+   - Mismatch: yellow background (`#fef3c7`) + warning icon on both Text AI and Vision AI amount rows
+   - Match: green background (`#dcfce7`) + checkmark on both cards
+   - Labels clarified: "Amount (from email)" vs "Amount (from document)"
+2. **Enhanced cross-validation box:**
+   - Mismatch: shows bold "AMOUNT MISMATCH" header + both values + difference with percentage (e.g., "Difference: 500,000 MMK (1.5%)")
+   - Match: shows "CROSS-VALIDATION PASSED" header
+
+**Lines changed:** ~10 lines in `renderAIPipelineSection()`
+**Risk:** Zero — same function, same data, just visual formatting changes
+
+**Analysis logged:** See `Phase2_Review_Analysis.md` for the full field-by-field feasibility table and why adding more comparison fields is deferred to Phase 3.
+
+---
+
 ## Remaining Actions
 
 1. ~~Re-import `n8n-workflow-v3.json` to n8n Cloud~~ — DONE (April 5)
-2. ~~Send test email~~ — DONE (verified pipeline + encoding fix)
+2. ~~Send test email~~ — DONE (Gintar Solutions, verified pipeline + encoding fix)
 3. **Visual QA on production** — Walk through full demo flow after Vercel deploy
 4. **Ctrl+Shift+R reset** — Clear old localStorage data, re-trigger test email to verify clean state

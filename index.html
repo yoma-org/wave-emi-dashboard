@@ -2266,19 +2266,24 @@ function renderAIPipelineSection(t){
     html += '<div class="detail-grid">';
     html += `<div class="ai-card text-ai"><div class="ai-card-title">Text Extraction<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-3.3-70b</span></div>
       <div class="ai-field"><div class="ai-field-label">Company</div><div class="ai-field-value">${t.company}</div></div>
-      <div class="ai-field"><div class="ai-field-label">Amount</div><div class="ai-field-value">${fmt(t.amount_requested)} MMK</div></div>
+      <div class="ai-field" style="${t.has_mismatch?'background:#fef3c7;padding:6px 8px;border-radius:6px;margin:-2px -8px':t.amount_on_document?'background:#dcfce7;padding:6px 8px;border-radius:6px;margin:-2px -8px':''}"><div class="ai-field-label">Amount (from email)</div><div class="ai-field-value">${fmt(t.amount_requested)} MMK${t.has_mismatch?' &#9888;':t.amount_on_document?' &#10003;':''}</div></div>
       <div class="ai-field"><div class="ai-field-label">Type</div><div class="ai-field-value">${t.type}</div></div>
       <div class="ai-field"><div class="ai-field-label">Approvers</div><div class="ai-field-value">${approversList}</div></div>
     </div>`;
     html += `<div class="ai-card vision-ai"><div class="ai-card-title">Document Vision<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-4-scout</span></div>
       <div class="ai-field"><div class="ai-field-label">Document Type</div><div class="ai-field-value">${t.document_type||'Unknown'}</div></div>
-      <div class="ai-field"><div class="ai-field-label">Amount on Document</div><div class="ai-field-value">${t.amount_on_document?fmt(t.amount_on_document)+' MMK':'N/A'}${t.has_mismatch?' <span style="color:#92400e">MISMATCH</span>':''}</div></div>
+      <div class="ai-field" style="${t.has_mismatch?'background:#fef3c7;padding:6px 8px;border-radius:6px;margin:-2px -8px':t.amount_on_document?'background:#dcfce7;padding:6px 8px;border-radius:6px;margin:-2px -8px':''}"><div class="ai-field-label">Amount (from document)</div><div class="ai-field-value">${t.amount_on_document?fmt(t.amount_on_document)+' MMK':'N/A'}${t.has_mismatch?' &#9888;':t.amount_on_document?' &#10003;':''}</div></div>
       <div class="ai-field"><div class="ai-field-label">Confidence</div><div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div><div style="font-size:12px;margin-top:2px;color:#7c3aed;font-weight:600">${conf}%</div></div>
       <div class="ai-field"><div class="ai-field-label">Signers on Document</div><div class="ai-field-value">${(t.document_signers||[]).map(s=>s.name+(s.role?' ('+s.role+')':'')).join(', ')||'None found'}</div></div>
     </div>`;
     html += '</div>';
-    if(t.has_mismatch) html += `<div class="cross-validation-box mismatch">AMOUNT MISMATCH &mdash; Email says ${fmt(t.amount_requested)} MMK but document shows ${fmt(t.amount_on_document)} MMK. Flagged for human review.</div>`;
-    else if(t.amount_on_document) html += `<div class="cross-validation-box match">Amount verified &mdash; Email (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK).</div>`;
+    if(t.has_mismatch){
+      var diff = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
+      var pct = t.amount_requested ? ((diff / t.amount_requested) * 100).toFixed(1) : '0';
+      html += `<div class="cross-validation-box mismatch"><div><strong>AMOUNT MISMATCH</strong><br>Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(diff)} MMK (${pct}%) &mdash; Flagged for human review</span></div></div>`;
+    } else if(t.amount_on_document){
+      html += `<div class="cross-validation-box match"><div><strong>CROSS-VALIDATION PASSED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
+    }
   } else {
     html += '<div class="detail-grid">';
     html += `<div class="ai-card text-ai"><div class="ai-card-title">Text Extraction<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-3.3-70b</span></div>
