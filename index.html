@@ -2142,7 +2142,7 @@ function checkN8nWebhook(){
   const encoded = params.get('n8n_ticket');
   if(!encoded) return;
   try {
-    const data = JSON.parse(atob(encoded));
+    const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded), c => c.charCodeAt(0))));
     createTicketFromN8n(data);
     // Clean URL without reload
     window.history.replaceState({}, '', window.location.pathname);
