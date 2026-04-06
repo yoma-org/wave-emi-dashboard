@@ -1085,8 +1085,50 @@ function renderEmails(){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
           <span style="color:var(--success);font-size:12px;font-weight:600">Parsed &rarr; ${t.id}</span>
           <button class="btn btn-outline btn-sm" onclick="openTicketDetail('${t.id}');event.stopPropagation()">View Details</button>
-        </div>
-      </div>`;
+        </div>`;
+
+      // v4: Auto-populate employee table from pipeline extraction
+      if(!t.prechecks_done){
+        const eid = 'N8N-'+t.id;
+        if(t.extracted_employees && t.extracted_employees.length > 0 && !pendingEmployeeData[eid]){
+          var headers = ['Name','MSISDN','Amount'];
+          var rows = t.extracted_employees.map(function(e){ return {'Name':e.name||'','MSISDN':e.account_or_phone||e.msisdn||e.phone||'','Amount':e.amount||0}; });
+          pendingEmployeeData[eid] = processEmployeeList(rows, headers);
+        }
+        if(pendingEmployeeData[eid]){
+          var processed = pendingEmployeeData[eid];
+          var invalidCount = processed.filter(function(r){return !r.MSISDN_Valid;}).length;
+          var cleanedCount = processed.filter(function(r){return r.Name_Changed;}).length;
+          var empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
+          html += `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px" onclick="event.stopPropagation()">`;
+          if(empConf) html += `<div style="margin-bottom:8px"><span class="badge badge-purple">AI Pre-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: ${empConf}% &middot; ${processed.length} employees &middot; Review before submitting</span></div>`;
+          html += `<strong style="font-size:12px">&#128202; ${processed.length} records &middot; ${invalidCount} invalid phone/account &middot; ${cleanedCount} names cleaned</strong>`;
+          html += '<div style="max-height:200px;overflow-y:auto;margin-top:6px"><table class="csv-table"><thead><tr><th>Name</th><th>Cleaned</th><th>Phone/Acct</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
+          processed.forEach(function(r){ html += '<tr class="'+(r.MSISDN_Valid?'':'invalid')+'"><td>'+r.Original_Name+'</td><td>'+r.Cleaned_Name+'</td><td>'+r.MSISDN+'</td><td>'+r.Validation_Status+'</td><td>'+fmt(r.Amount)+'</td></tr>'; });
+          html += '</tbody></table></div>';
+          if(invalidCount > 0) html += '<div class="alert alert-warn" style="margin-top:6px;font-size:12px">&#9888; '+invalidCount+' phone/account number(s) failed validation.</div>';
+          var recChecks = reconcileAmounts(t, processed);
+          html += '<div class="amounts-check" style="margin-top:8px"><strong style="font-size:12px;display:block;margin-bottom:6px">Amount Reconciliation</strong>';
+          recChecks.forEach(function(chk){ html += '<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>'; });
+          html += '</div>';
+          html += `<div class="btn-group" style="margin-top:8px"><button class="btn btn-success btn-sm" onclick="handleN8nSubmit('${t.id}','${eid}');event.stopPropagation()">Save & Submit for Finance</button></div>`;
+          html += '</div>';
+        } else {
+          // No extracted employees — show upload zone
+          html += `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px" onclick="event.stopPropagation()">
+            <strong style="font-size:12px">Step 2 &mdash; Upload Employee List</strong>
+            <div class="upload-zone" style="margin-top:6px" id="emp-zone-${eid}">
+              <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg" onchange="handleEmployeeUpload(this,'${eid}','${t.id}')"/>
+              <div class="upload-icon">&#128196;</div>
+              <div class="upload-label">Drop or click to upload</div>
+              <div class="upload-hint">CSV, XLSX, or Payroll Image (PNG/JPG)</div>
+            </div>
+            <div id="emp-preview-${eid}"></div>
+          </div>`;
+        }
+      }
+
+      html += `</div>`;
     });
     html += '</div></div></div>';
   }
@@ -1148,10 +1190,10 @@ function renderEmails(){
         // Employee upload
         html += `<div style="margin-top:16px"><strong style="font-size:14px">Step 2 \u2014 Upload Employee List</strong>
           <div class="upload-zone" style="margin-top:8px" id="emp-zone-${eid}">
-            <input type="file" accept=".csv,.xlsx" onchange="handleEmployeeUpload(this,'${eid}','${tid}')"/>
+            <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg" onchange="handleEmployeeUpload(this,'${eid}','${tid}')"/>
             <div class="upload-icon">\uD83D\uDCC4</div>
             <div class="upload-label">Drop or click to upload employee list</div>
-            <div class="upload-hint">CSV or XLSX</div>
+            <div class="upload-hint">CSV, XLSX, or Payroll Image (PNG/JPG)</div>
           </div>
           <div id="emp-preview-${eid}"></div>
         </div>`;
@@ -1217,10 +1259,95 @@ function handleParseEmail(emailId){
   renderEmails();
 }
 
+// v4: Submit pre-extracted n8n employee data for Finance approval
+function handleN8nSubmit(ticketId, eid){
+  var employees = pendingEmployeeData[eid];
+  if(!employees || !employees.length) return;
+  var invalidCount = employees.filter(function(r){return !r.MSISDN_Valid;}).length;
+  var cleanedCount = employees.filter(function(r){return r.Name_Changed;}).length;
+  var empTotal = employees.reduce(function(s,r){return s+r.Amount;},0);
+  var ticket = state.tickets[ticketId];
+  if(!ticket) return;
+  var recChecks = reconcileAmounts(ticket, employees);
+  var hasMismatch = recChecks.some(function(c){return c.status==='fail';});
+  updateTicket(ticketId, {
+    prechecks_done:true, prechecks_at:nowTs(),
+    employee_data:employees, total_employees:employees.length,
+    invalid_msisdn_count:invalidCount, names_cleaned_count:cleanedCount,
+    employee_file_name:'ai-extracted', employee_total:empTotal,
+    reconciliation:recChecks, has_mismatch:hasMismatch||ticket.has_mismatch,
+  });
+  logActivity(ticketId+' submitted for Finance (AI-extracted employees)');
+  showToast(ticketId+' submitted for Finance Approval','success');
+  renderEmails();
+}
+
+// v4: Convert file to base64
+function fileToBase64(file){
+  return new Promise(function(resolve){
+    var r = new FileReader();
+    r.onload = function(){ resolve(r.result.split(',')[1]); };
+    r.readAsDataURL(file);
+  });
+}
+
+// v4: Extract employee list from payroll image via Vercel API
+async function handlePayrollImageExtraction(file, emailId, ticketId){
+  var previewEl = document.getElementById('emp-preview-'+emailId);
+  if(!previewEl) return;
+  if(file.size > 3*1024*1024){
+    previewEl.innerHTML = '<div class="alert alert-warn" style="margin-top:8px">Image too large (max 3 MB). Please resize or use CSV/XLSX.</div>';
+    return;
+  }
+  previewEl.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div><div style="margin-top:8px;color:#7c3aed;font-weight:600">AI extracting employee list...</div><div style="font-size:12px;color:var(--muted)">Groq Vision AI analyzing document</div></div>';
+  try {
+    var base64 = await fileToBase64(file);
+    var resp = await fetch('/api/extract-employees',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:base64,mime_type:file.type})});
+    var result = await resp.json();
+    if(result.error||!result.employees||result.employees.length===0){
+      previewEl.innerHTML = '<div class="alert alert-warn" style="margin-top:8px">AI could not extract employee data.<br><span style="font-size:12px">Upload a clear table image or CSV/XLSX instead.</span></div>';
+      return;
+    }
+    var headers = ['Name','MSISDN','Amount'];
+    var rows = result.employees.map(function(e){return {'Name':e.name||'','MSISDN':e.account_or_phone||e.msisdn||e.phone||'','Amount':e.amount||0};});
+    var processed = processEmployeeList(rows, headers);
+    pendingEmployeeData[emailId] = processed;
+    var invalidCount = processed.filter(function(r){return !r.MSISDN_Valid;}).length;
+    var cleanedCount = processed.filter(function(r){return r.Name_Changed;}).length;
+    var total = processed.reduce(function(s,r){return s+r.Amount;},0);
+    var conf = result.confidence?(result.confidence*100).toFixed(0):'?';
+    var preview = '<div style="margin-top:12px"><span class="badge badge-purple">AI Extracted</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: '+conf+'% &middot; '+processed.length+' employees</span></div>';
+    preview += '<div style="margin-top:8px"><strong>&#128202; '+processed.length+' records &middot; '+invalidCount+' invalid &middot; '+cleanedCount+' names cleaned</strong></div>';
+    preview += '<div style="max-height:300px;overflow-y:auto;margin-top:8px"><table class="csv-table"><thead><tr><th>Original Name</th><th>Cleaned Name</th><th>MSISDN</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
+    processed.forEach(function(r){preview+='<tr class="'+(r.MSISDN_Valid?'':'invalid')+'"><td>'+r.Original_Name+'</td><td>'+r.Cleaned_Name+'</td><td>'+r.MSISDN+'</td><td>'+r.Validation_Status+'</td><td>'+fmt(r.Amount)+'</td></tr>';});
+    preview += '</tbody></table></div>';
+    if(invalidCount>0) preview += '<div class="alert alert-warn" style="margin-top:8px">&#9888; '+invalidCount+' phone/account number(s) failed validation.</div>';
+    var ticket = state.tickets[ticketId];
+    if(ticket){
+      var recChecks = reconcileAmounts(ticket, processed);
+      preview += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:14px;display:block;margin-bottom:8px">Amount Reconciliation</strong>';
+      recChecks.forEach(function(chk){preview+='<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>';});
+      preview += '</div>';
+    }
+    previewEl.innerHTML = preview;
+    var zone = document.getElementById('emp-zone-'+emailId);
+    if(zone) zone.classList.add('has-file');
+    var submitBtn = document.getElementById('submit-btn-'+emailId);
+    if(submitBtn) submitBtn.disabled = false;
+  } catch(err){
+    previewEl.innerHTML = '<div class="alert alert-danger" style="margin-top:8px">AI extraction failed: '+(err.message||'Unknown error')+'. Upload CSV/XLSX instead.</div>';
+  }
+}
+
 function handleEmployeeUpload(input, emailId, ticketId){
   const file = input.files[0];
   if(!file) return;
-
+  // v4: Route images to AI extraction
+  if(file.type.startsWith('image/')){
+    handlePayrollImageExtraction(file, emailId, ticketId);
+    return;
+  }
+  // Existing CSV/XLSX flow below
   const reader = new FileReader();
   reader.onload = function(e){
     try {
@@ -2235,6 +2362,17 @@ function createTicketFromN8n(data){
     amount_on_document:data.amount_on_document||0,
     document_type:data.document_type||'',
     document_signers:data.document_signers||[],
+    // v4: Finance bank slip fields
+    depositor_name:data.depositor_name||'',
+    remark:data.remark||'',
+    transaction_id:data.transaction_id||'',
+    // v4: Pre-extracted employee list from pipeline
+    extracted_employees:data.extracted_employees||[],
+    extracted_employee_count:data.extracted_employee_count||0,
+    employee_extraction_confidence:data.employee_extraction_confidence||0,
+    employee_extraction_status:data.employee_extraction_status||'none',
+    employee_total_extracted:data.employee_total_extracted||0,
+    employee_amount_mismatch:data.employee_amount_mismatch||false,
   };
   state.tickets[tid].status = deriveStatus(state.tickets[tid]);
   state.tickets[tid].risk_level = computeRisk(state.tickets[tid]);
@@ -2275,6 +2413,9 @@ function renderAIPipelineSection(t){
       <div class="ai-field" style="${t.has_mismatch?'background:#fef3c7;padding:6px 8px;border-radius:6px;margin:-2px -8px':t.amount_on_document?'background:#dcfce7;padding:6px 8px;border-radius:6px;margin:-2px -8px':''}"><div class="ai-field-label">Amount (from document)</div><div class="ai-field-value">${t.amount_on_document?fmt(t.amount_on_document)+' MMK':'N/A'}${t.has_mismatch?' &#9888;':t.amount_on_document?' &#10003;':''}</div></div>
       <div class="ai-field"><div class="ai-field-label">Confidence</div><div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div><div style="font-size:12px;margin-top:2px;color:#7c3aed;font-weight:600">${conf}%</div></div>
       <div class="ai-field"><div class="ai-field-label">Signers on Document</div><div class="ai-field-value">${(t.document_signers||[]).map(s=>s.name+(s.role?' ('+s.role+')':'')).join(', ')||'None found'}</div></div>
+      ${t.depositor_name?'<div class="ai-field"><div class="ai-field-label">Depositor</div><div class="ai-field-value">'+t.depositor_name+'</div></div>':''}
+      ${t.remark?'<div class="ai-field"><div class="ai-field-label">Remark / Purpose</div><div class="ai-field-value">'+t.remark+'</div></div>':''}
+      ${t.transaction_id?'<div class="ai-field"><div class="ai-field-label">Transaction ID</div><div class="ai-field-value">'+t.transaction_id+'</div></div>':''}
     </div>`;
     html += '</div>';
     if(t.has_mismatch){

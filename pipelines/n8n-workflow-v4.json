@@ -1,0 +1,302 @@
+{
+  "name": "EMI Email Intake Pipeline v4 (Finance Fields + Employee Extract)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emi-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "emi-intake"
+    },
+    {
+      "parameters": {
+        "simple": false,
+        "filters": {},
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        250,
+        520
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail (personal)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare raw email data for AI extraction (v3 — Vision + Rate Limiting)\n// Builds on v2.1: adds binary attachment extraction + text call rate limiter\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\nconst d = item.json;\n\n// Rate limit: text calls (persists across production executions)\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (staticData.date !== today) {\n  staticData.date = today;\n  staticData.textCalls = 0;\n  staticData.visionCalls = 0;\n  staticData.visionErrors = 0;\n}\nif (staticData.textCalls >= 100) {\n  return []; // Daily text cap reached\n}\nstaticData.textCalls++;\n\n// Helper: resolve a value that might be string, object, or array to a readable string\nfunction resolveValue(val) {\n  if (typeof val === 'string') return val;\n  if (val && typeof val === 'object') {\n    if (val.text && typeof val.text === 'string') return val.text;\n    if (Array.isArray(val.value) && val.value[0]) {\n      const parts = val.value.map(v => v.address ? (v.name ? v.name + ' <' + v.address + '>' : v.address) : '');\n      return parts.filter(Boolean).join(', ');\n    }\n    if (val.address) return val.name ? val.name + ' <' + val.address + '>' : val.address;\n    if (Array.isArray(val)) {\n      return val.map(v => resolveValue(v)).filter(Boolean).join(', ');\n    }\n    try { const j = JSON.stringify(val); if (j !== '{}') return j; } catch(e) {}\n  }\n  return '';\n}\n\n// Helper: extract any email header by name (works across all Gmail data formats)\nfunction getHeader(name) {\n  if (d.payload && d.payload.headers && Array.isArray(d.payload.headers)) {\n    const h = d.payload.headers.find(h => h.name && h.name.toLowerCase() === name.toLowerCase());\n    if (h && h.value) return h.value;\n  }\n  const capKey = name.charAt(0).toUpperCase() + name.slice(1);\n  if (d[capKey]) return resolveValue(d[capKey]);\n  if (d[name.toLowerCase()]) return resolveValue(d[name.toLowerCase()]);\n  if (d.headers && typeof d.headers === 'object' && !Array.isArray(d.headers)) {\n    const val = d.headers[name] || d.headers[name.toLowerCase()];\n    if (val) return resolveValue(val);\n  }\n  return '';\n}\n\nconst isEmail = d.snippet !== undefined || d.threadId !== undefined || d.Subject !== undefined || d.From !== undefined || (d.payload && d.payload.headers);\nconst source = isEmail ? 'email' : 'webhook';\n\nconst subject = isEmail\n  ? (getHeader('Subject') || '')\n  : (d.body?.subject || d.subject || '');\n\n// LOOP GUARD\nif (isEmail && (subject.includes('EMI Pipeline:') || subject.includes('EMI Pipeline \\u2014'))) {\n  return [];\n}\n\nlet body = '';\nif (isEmail) {\n  body = d.textPlain || d.text || d.snippet || d.textHtml || '';\n  if ((!body || body.length < 50) && d.payload && d.payload.parts) {\n    for (const part of d.payload.parts) {\n      if (part.mimeType === 'text/plain' && part.body && part.body.data) {\n        try { body = Buffer.from(part.body.data, 'base64').toString('utf-8'); } catch(e) {}\n        break;\n      }\n    }\n  }\n  if ((!body || body.length < 50) && d.payload && d.payload.body && d.payload.body.data) {\n    try { body = Buffer.from(d.payload.body.data, 'base64').toString('utf-8'); } catch(e) {}\n  }\n  body = body.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();\n} else {\n  const raw = d.body?.body || d.bodyPreview || d.body || '';\n  body = typeof raw === 'string' ? raw : '';\n}\n\nlet from = '';\nif (isEmail) {\n  let rawFrom = getHeader('From');\n  if (!rawFrom) {\n    for (const [key, val] of Object.entries(d)) {\n      if (key.toLowerCase().includes('from') && typeof val === 'string' && val.includes('@')) {\n        rawFrom = val; break;\n      }\n    }\n  }\n  if (typeof rawFrom === 'string' && rawFrom) {\n    const m = rawFrom.match(/<([^>]+)>/);\n    from = m ? m[1] : rawFrom.trim();\n  }\n} else {\n  from = d.body?.from || d.from || '';\n}\n\nconst to_email = isEmail ? getHeader('To') : '';\nconst cc_emails = isEmail ? getHeader('Cc') : '';\nconst reply_to = isEmail ? getHeader('Reply-To') : '';\nconst email_date = isEmail ? getHeader('Date') : '';\nconst message_id = d.id || (isEmail ? getHeader('Message-ID') : '') || '';\nconst thread_id = d.threadId || '';\n\nlet has_attachments = false;\nconst attachment_names = [];\nfunction scanParts(parts) {\n  if (!Array.isArray(parts)) return;\n  for (const part of parts) {\n    if (part.filename && part.filename.length > 0) {\n      has_attachments = true;\n      attachment_names.push(part.filename);\n    }\n    if (part.parts) scanParts(part.parts);\n  }\n}\nif (d.payload && d.payload.parts) scanParts(d.payload.parts);\n\n// === v3 NEW: Binary attachment extraction (n8n Cloud Task Runner compatible) ===\nconst attachment_base64_list = [];\nconst MAX_ATTACHMENTS = 2;\nconst MAX_SIZE = 4 * 1024 * 1024; // 4MB Groq hard limit\n\nif (item.binary) {\n  const keys = Object.keys(item.binary).filter(k => k.startsWith('attachment_'));\n  for (let j = 0; j < Math.min(keys.length, MAX_ATTACHMENTS); j++) {\n    const meta = item.binary[keys[j]];\n    const mime = meta.mimeType || '';\n    if (mime.startsWith('image/') || mime === 'application/pdf') {\n      try {\n        // Task Runner: use helpers.getBinaryDataBuffer (no this.)\n        const buffer = await helpers.getBinaryDataBuffer($itemIndex, keys[j]);\n        if (buffer.length <= MAX_SIZE) {\n          attachment_base64_list.push({\n            filename: meta.fileName || keys[j],\n            mimeType: mime,\n            base64: buffer.toString('base64'),\n            sizeBytes: buffer.length\n          });\n        }\n      } catch (e) { /* Binary extraction failed — continue without */ }\n    }\n  }\n}\n\nconst prompt = `You are an email parser for Wave Money's EMI (Electronic Money Issuer) salary disbursement pipeline in Myanmar.\n\nAnalyze this email and extract structured data.\n\nEMAIL SUBJECT: ${subject}\nEMAIL BODY: ${body}\nFROM: ${from}\n\nReturn a JSON object with these exact fields:\n{\n  \"is_disbursement\": true or false (is this a salary/EMI/disbursement/OTC request?),\n  \"company\": \"company name requesting disbursement\",\n  \"amount\": number (total amount in MMK, 0 if not found),\n  \"type\": \"SalaryToOTC\" if OTC or over-the-counter is mentioned, otherwise \"SalaryToMA\",\n  \"approvers\": [{\"name\": \"person name\", \"role\": \"their title/role\", \"status\": \"Approved\"}],\n  \"body_preview\": \"first 200 characters of the email body\"\n}\n\nIMPORTANT: Return ONLY the JSON object, no explanation or markdown.`;\n\nreturn {\n  json: {\n    _source: source,\n    from_email: from,\n    original_subject: subject,\n    prompt: prompt,\n    to_email: to_email,\n    cc_emails: cc_emails,\n    reply_to: reply_to,\n    email_date: email_date,\n    message_id: message_id,\n    thread_id: thread_id,\n    has_attachments: has_attachments,\n    attachment_names: attachment_names,\n    attachment_count: attachment_names.length,\n    // v3: binary attachment data for vision processing\n    attachment_base64: attachment_base64_list[0] || null,\n    vision_eligible: attachment_base64_list.length > 0,\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "prepare-for-ai-v3",
+      "name": "Prepare for AI v3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_GROQ_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: $json.prompt }], response_format: { type: 'json_object' }, temperature: 0.1 }) }}",
+        "options": {}
+      },
+      "id": "groq-extract",
+      "name": "Groq AI Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Employee List Extract — 2nd Vision call to extract employee TABLE from attachment\n// Uses same attachment as Vision Process but with a different prompt focused on employee rows\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\nconst d = item.json;\n\n// Get attachment from Prepare node (same pattern as Vision Process)\nconst prepData = $('Prepare for AI v3').first().json;\nconst attachment = prepData.attachment_base64;\n\nif (!attachment || !prepData.vision_eligible) {\n  // No attachment → pass through with empty employees\n  return [{ json: { ...d, _employee_result: null, _employee_status: 'no_attachment' } }];\n}\n\n// Rate limit check (shares counter with Vision Process)\nconst staticData = $getWorkflowStaticData('global');\nif ((staticData.visionCalls || 0) >= 20) {\n  return [{ json: { ...d, _employee_result: null, _employee_status: 'rate_limited' } }];\n}\nstaticData.visionCalls = (staticData.visionCalls || 0) + 1;\n\nconst prompt = 'Extract the employee/payroll list from this document. Return JSON only: {\"employees\":[{\"name\":\"Full Name as written\",\"account_or_phone\":\"phone or account number exactly as shown\",\"amount\":0}],\"total_amount\":0,\"employee_count\":0,\"confidence\":0.0}. Rules: Extract EVERY employee row. account_or_phone: copy exact digits. amount: numeric only, no commas. If no employee table found, return empty employees array with confidence 0.';\n\ntry {\n  // Use helpers.httpRequest — same proven pattern as Vision Process node\n  const resp = await helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.groq.com/openai/v1/chat/completions',\n    headers: {\n      'Authorization': 'Bearer REPLACE_WITH_GROQ_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n      messages: [{\n        role: 'user',\n        content: [\n          { type: 'text', text: prompt },\n          { type: 'image_url', image_url: { url: 'data:' + attachment.mimeType + ';base64,' + attachment.base64 } }\n        ]\n      }],\n      response_format: { type: 'json_object' },\n      temperature: 0.1,\n      max_tokens: 4000\n    },\n    json: true\n  });\n\n  // Parse response (same pattern as Vision Process)\n  let parsed = { employees: [], confidence: 0 };\n  if (resp.choices && resp.choices[0]) {\n    const content = resp.choices[0].message.content || '';\n    try { parsed = JSON.parse(content); } catch(e) { /* keep empty default */ }\n  }\n\n  return [{ json: { ...d, _employee_result: parsed, _employee_status: 'success' } }];\n\n} catch(e) {\n  return [{ json: { ...d, _employee_result: null, _employee_status: 'api_error' } }];\n}\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "employee-extract",
+      "name": "Employee List Extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response, validate authority matrix, merge vision results, generate dashboard URL (v3)\n// v3 additions: vision merge, cross-validation, AMOUNT_MISMATCH scenario\n\nconst items = $input.all();\nconst results = [];\n\n// Retrieve metadata from Prepare node (HTTP Request + Vision nodes replace item data)\nconst prepData = $('Prepare for AI v3').first().json;\nconst source = prepData._source;\nconst from_email = prepData.from_email;\nconst original_subject = prepData.original_subject;\nconst to_email = prepData.to_email || '';\nconst cc_emails = prepData.cc_emails || '';\nconst reply_to = prepData.reply_to || '';\nconst email_date = prepData.email_date || '';\nconst message_id = prepData.message_id || '';\nconst thread_id = prepData.thread_id || '';\nconst has_attachments = prepData.has_attachments || false;\nconst attachment_names = prepData.attachment_names || [];\nconst attachment_count = prepData.attachment_count || 0;\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Extract AI response text — Groq/OpenAI format\n  let aiText = '';\n  if (d.choices && d.choices[0]) {\n    aiText = d.choices[0].message.content || '';\n  }\n\n  // Parse JSON from AI response\n  let parsed = {};\n  try {\n    parsed = JSON.parse(aiText);\n  } catch (e) {\n    // Fallback: try extracting from markdown code block\n    const jsonMatch = aiText.match(/```json?\\s*([\\s\\S]*?)```/);\n    if (jsonMatch) {\n      try { parsed = JSON.parse(jsonMatch[1]); } catch (e2) {}\n    }\n  }\n\n  // AI-powered keyword filter: skip non-disbursement emails\n  if (!parsed.is_disbursement) {\n    return [];\n  }\n\n  // AUTHORITY MATRIX CHECK\n  const required = ['Sales HOD', 'Finance Manager'];\n  const matrixResults = required.map(req => {\n    const found = (parsed.approvers || []).find(a =>\n      a.role.toLowerCase().includes(req.toLowerCase())\n    );\n    return {\n      requiredRole: req,\n      found: !!found,\n      foundName: found ? found.name : 'MISSING',\n    };\n  });\n  const matrixComplete = matrixResults.every(m => m.found);\n\n  // SCENARIO DETECTION\n  let scenario = 'NORMAL';\n  if (!matrixComplete) {\n    scenario = 'MISSING_APPROVAL';\n  }\n\n  // BUILD TICKET PAYLOAD (includes metadata)\n  const ticket = {\n    company: parsed.company || 'Unknown Company',\n    type: parsed.type || 'SalaryToMA',\n    amount_requested: parsed.amount || 0,\n    amount_on_bank_slip: parsed.amount || 0,\n    currency: 'MMK',\n    approvals: parsed.approvers || [],\n    required_approvals: required,\n    body_preview: parsed.body_preview || '',\n    original_subject: original_subject,\n    parsed_at: new Date().toISOString(),\n    scenario,\n    approval_matrix_complete: matrixComplete,\n    ai_parsed: true,\n    from_email: from_email,\n    to_email: to_email,\n    cc_emails: cc_emails,\n    reply_to: reply_to,\n    email_date: email_date,\n    message_id: message_id,\n    thread_id: thread_id,\n    has_attachments: has_attachments,\n    attachment_names: attachment_names,\n    attachment_count: attachment_count,\n  };\n\n  // === v3: Vision merge ===\n  const visionResult = d._vision_result || null;\n  const visionStatus = d._vision_status || 'none';\n\n  if (visionResult && visionResult.confidence > 0.5) {\n    // Cross-validate amount (the \"wow\" moment for Tuesday demo)\n    if (visionResult.total_amount > 0 && ticket.amount_requested > 0) {\n      const diff = Math.abs(visionResult.total_amount - ticket.amount_requested);\n      ticket.amount_mismatch = diff > (ticket.amount_requested * 0.01); // 1% tolerance\n      ticket.amount_on_document = visionResult.total_amount;\n      // Update bank slip amount for dashboard compatibility\n      if (visionResult.total_amount > 0) {\n        ticket.amount_on_bank_slip = visionResult.total_amount;\n      }\n    }\n    ticket.document_type = visionResult.doc_type;\n    ticket.document_signers = visionResult.authorized_signers;\n    ticket.depositor_name = visionResult.depositor_name || '';\n    ticket.remark = visionResult.remark || '';\n    ticket.transaction_id = visionResult.transaction_id || visionResult.reference_number || '';\n    ticket.vision_parsed = true;\n    ticket.vision_confidence = visionResult.confidence;\n  }\n\n  // Override scenario if vision found amount mismatch\n  if (ticket.amount_mismatch) scenario = 'AMOUNT_MISMATCH';\n  ticket.scenario = scenario; // Update after potential override\n\n  // Vision metadata for output\n  ticket.vision_status = visionStatus;\n\n  \n  // === v4: Employee list merge ===\n  const employeeResult = d._employee_result || null;\n  const employeeStatus = d._employee_status || 'none';\n\n  if (employeeResult && employeeResult.employees && employeeResult.employees.length > 0) {\n    ticket.extracted_employees = employeeResult.employees;\n    ticket.extracted_employee_count = employeeResult.employee_count || employeeResult.employees.length;\n    ticket.employee_extraction_confidence = employeeResult.confidence || 0;\n    ticket.employee_extraction_status = 'success';\n\n    // Cross-validation: sum of employee amounts vs email amount\n    const empTotal = employeeResult.employees.reduce((s, e) => s + (e.amount || 0), 0);\n    ticket.employee_total_extracted = empTotal;\n    if (ticket.amount_requested > 0 && empTotal > 0) {\n      const diff = Math.abs(empTotal - ticket.amount_requested);\n      ticket.employee_amount_mismatch = diff > (ticket.amount_requested * 0.01);\n    }\n  } else {\n    ticket.extracted_employees = [];\n    ticket.extracted_employee_count = 0;\n    ticket.employee_extraction_confidence = 0;\n    ticket.employee_extraction_status = employeeStatus;\n    ticket.employee_total_extracted = 0;\n    ticket.employee_amount_mismatch = false;\n  }\n\n  // GENERATE DASHBOARD URL\n  const encoded = Buffer.from(JSON.stringify(ticket)).toString('base64');\n  const dashboardUrl = `https://wave-emi-dashboard.vercel.app/?n8n_ticket=${encoded}`;\n\n  results.push({\n    json: {\n      _source: source,\n      dashboard_url: dashboardUrl,\n      company: parsed.company || 'Unknown Company',\n      amount: parsed.amount || 0,\n      type: parsed.type || 'SalaryToMA',\n      scenario,\n      matrix_complete: matrixComplete,\n      matrix_details: matrixResults,\n      from_email: from_email,\n      original_subject: original_subject,\n      to_email: to_email,\n      cc_emails: cc_emails,\n      email_date: email_date,\n      has_attachments: has_attachments,\n      attachment_count: attachment_count,\n      // v3: vision output\n      vision_parsed: ticket.vision_parsed || false,\n      vision_confidence: ticket.vision_confidence || 0,\n      vision_status: visionStatus,\n      amount_on_document: ticket.amount_on_document || 0,\n      document_type: ticket.document_type || '',\n      document_signers: ticket.document_signers || [],\n      // v4: Employee extraction fields\n      extracted_employees: ticket.extracted_employees || [],\n      extracted_employee_count: ticket.extracted_employee_count || 0,\n      employee_extraction_confidence: ticket.employee_extraction_confidence || 0,\n      employee_extraction_status: ticket.employee_extraction_status || 'none',\n      employee_total_extracted: ticket.employee_total_extracted || 0,\n      employee_amount_mismatch: ticket.employee_amount_mismatch || false,\n      // v4: Finance fields\n      depositor_name: ticket.depositor_name || '',\n      remark: ticket.remark || '',\n      transaction_id: ticket.transaction_id || '',\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "parse-validate-v3",
+      "name": "AI Parse & Validate v3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "source-check",
+              "leftValue": "={{ $json._source }}",
+              "rightValue": "webhook",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-by-source",
+      "name": "Route by Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond with Dashboard URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.from_email ? $json.from_email + ', khanhnguyen@zeyalabs.ai' : 'khanhnguyen@zeyalabs.ai' }}",
+        "subject": "=EMI Pipeline: {{ $json.company }} — {{ $json.scenario }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\"><div style=\"background:#001E4E;padding:20px;border-radius:12px 12px 0 0\"><h2 style=\"color:#fff;margin:0\">Wave EMI Pipeline</h2><p style=\"color:#00C2D4;margin:4px 0 0\">AI-Powered Disbursement Processing</p></div><div style=\"background:#f8fafc;padding:24px;border:1px solid #e2e8f0\"><h3 style=\"color:#001E4E;margin-top:0\">New Ticket Created</h3><table style=\"width:100%;border-collapse:collapse\"><tr><td style=\"padding:8px 0;color:#64748b\">Company</td><td style=\"padding:8px 0;font-weight:bold\">{{ $json.company }}</td></tr><tr><td style=\"padding:8px 0;color:#64748b\">Amount</td><td style=\"padding:8px 0;font-weight:bold\">{{ $json.amount?.toLocaleString() }} MMK</td></tr><tr><td style=\"padding:8px 0;color:#64748b\">Type</td><td style=\"padding:8px 0\">{{ $json.type }}</td></tr><tr><td style=\"padding:8px 0;color:#64748b\">Scenario</td><td style=\"padding:8px 0\"><span style=\"background:{{ $json.scenario === 'NORMAL' ? '#dcfce7' : '#fef3c7' }};color:{{ $json.scenario === 'NORMAL' ? '#166534' : '#92400e' }};padding:4px 12px;border-radius:12px;font-size:13px\">{{ $json.scenario }}</span></td></tr><tr><td style=\"padding:8px 0;color:#64748b\">Authority Matrix</td><td style=\"padding:8px 0\">{{ $json.matrix_complete ? '✅ Complete' : '⚠️ Incomplete' }}</td></tr></table><div style=\"margin-top:24px;text-align:center\"><a href=\"{{ $json.dashboard_url }}\" style=\"display:inline-block;padding:14px 32px;background:#0057B8;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px\">Open Dashboard to Review</a></div></div><div style=\"background:#f1f5f9;padding:12px 24px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:0\"><p style=\"color:#94a3b8;font-size:12px;margin:0\">Parsed by Groq AI (Llama 3.3) | Auto-generated by Wave EMI Pipeline (n8n)</p></div></div>",
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "Send Gmail Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        520
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail (personal)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vision Process — conditional Groq Vision API call (v3)\n// Only calls vision if: attachment exists + rate limit OK + circuit breaker OK\n// If any condition fails, passes through unchanged (text-only ticket)\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\nconst d = item.json;\n\n// Rate limit counters (shared with Prepare for AI v3 via global static data)\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (staticData.date !== today) {\n  staticData.date = today;\n  staticData.textCalls = 0;\n  staticData.visionCalls = 0;\n  staticData.visionErrors = 0;\n}\n\n// Get attachment from Prepare node (HTTP Request replaces item data)\nconst prepData = $('Prepare for AI v3').first().json;\nconst attachment = prepData.attachment_base64;\nconst visionEligible = prepData.vision_eligible;\n\n// Default: pass through Groq text response unchanged\nlet visionResult = null;\nlet visionStatus = 'none';\nlet visionUsage = null;\n\n// Check all conditions before calling vision\nconst rateLimitOK = staticData.visionCalls < 20;\nconst circuitBreakerOK = staticData.visionErrors < 3;\n\nif (visionEligible && attachment && rateLimitOK && circuitBreakerOK) {\n  try {\n    staticData.visionCalls++;\n\n    // Task Runner: use helpers.httpRequest (no this.)\n    const resp = await helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.groq.com/openai/v1/chat/completions',\n      headers: {\n        'Authorization': 'Bearer REPLACE_WITH_GROQ_API_KEY',\n        'Content-Type': 'application/json'\n      },\n      body: {\n        model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n        messages: [{\n          role: 'user',\n          content: [\n            {\n              type: 'text',\n              text: \"Extract from this bank slip / payment document. Return JSON only:\\n{\\n  \\\"doc_type\\\": \\\"bank_slip\\\" | \\\"payment_instruction\\\" | \\\"payroll_form\\\" | \\\"unknown\\\",\\n  \\\"depositor_name\\\": \\\"\\\",\\n  \\\"company_name\\\": \\\"\\\",\\n  \\\"total_amount\\\": 0,\\n  \\\"currency\\\": \\\"\\\",\\n  \\\"remark\\\": \\\"\\\",\\n  \\\"payment_date\\\": \\\"\\\",\\n  \\\"payment_method\\\": \\\"\\\",\\n  \\\"transaction_id\\\": \\\"\\\",\\n  \\\"authorized_signers\\\": [{\\\"name\\\": \\\"\\\", \\\"role\\\": \\\"\\\"}],\\n  \\\"reference_number\\\": \\\"\\\",\\n  \\\"confidence\\\": 0.0\\n}\"\n            },\n            {\n              type: 'image_url',\n              image_url: {\n                url: 'data:' + attachment.mimeType + ';base64,' + attachment.base64\n              }\n            }\n          ]\n        }],\n        response_format: { type: 'json_object' },\n        temperature: 0.1,\n        max_tokens: 500\n      },\n      json: true\n    });\n\n    // Parse vision response\n    if (resp.choices && resp.choices[0]) {\n      const content = resp.choices[0].message.content || '';\n      try {\n        visionResult = JSON.parse(content);\n        visionStatus = 'success';\n        staticData.visionErrors = 0; // Reset on success\n      } catch (e) {\n        visionStatus = 'parse_error';\n        staticData.visionErrors++;\n      }\n    }\n    visionUsage = resp.usage || null;\n\n  } catch (e) {\n    visionStatus = 'api_error';\n    staticData.visionErrors++;\n  }\n} else if (visionEligible && !rateLimitOK) {\n  visionStatus = 'rate_limited';\n} else if (visionEligible && !circuitBreakerOK) {\n  visionStatus = 'circuit_breaker';\n}\n\n// Output: Groq text response + vision results (WITHOUT attachment_base64)\nreturn {\n  json: {\n    ...d,\n    _vision_result: visionResult,\n    _vision_status: visionStatus,\n    _vision_usage: visionUsage,\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "vision-process",
+      "name": "Vision Process",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq AI Extract": {
+      "main": [
+        [
+          {
+            "node": "Vision Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Source": {
+      "main": [
+        [
+          {
+            "node": "Respond with Dashboard URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Gmail Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for AI v3": {
+      "main": [
+        [
+          {
+            "node": "Groq AI Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vision Process": {
+      "main": [
+        [
+          {
+            "node": "Employee List Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Parse & Validate v3": {
+      "main": [
+        [
+          {
+            "node": "Route by Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee List Extract": {
+      "main": [
+        [
+          {
+            "node": "AI Parse & Validate v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
