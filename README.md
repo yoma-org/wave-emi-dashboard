@@ -53,7 +53,7 @@ Internal operations tool for Wave Money's corporate salary disbursement pipeline
 
 8-node pipeline. Parses email text with Groq LLM, validates authority matrix, routes to webhook response or email notification.
 
-**File:** `n8n-workflow-v2.json`
+**File:** `pipelines/n8n-workflow-v2.json`
 
 ### v3 — Vision + Rate Limiting
 
@@ -64,11 +64,11 @@ Internal operations tool for Wave Money's corporate salary disbursement pipeline
 - **Rate limiting** — 100 text calls/day, 20 vision calls/day, circuit breaker on 3 consecutive errors
 - **Graceful degradation** — Every failure path produces a valid text-only ticket
 
-**File:** `n8n-workflow-v3.json`
+**File:** `pipelines/n8n-workflow-v3.json`
 
 ### v1 — Original (Archived)
 
-First iteration with basic structure. **File:** `n8n-workflow.json`
+First iteration with basic structure. **File:** `pipelines/n8n-workflow-v1.json`
 
 ## Dashboard Features
 
@@ -98,18 +98,34 @@ First iteration with basic structure. **File:** `n8n-workflow.json`
 
 ```
 wave-emi-dashboard/
-├── index.html              ← Dashboard app (single-file, ~2100 lines)
-├── api/webhook.js          ← Vercel serverless endpoint for n8n
-├── vercel.json             ← Vercel routing config
-├── n8n-workflow.json       ← Pipeline v1 (archived)
-├── n8n-workflow-v2.json    ← Pipeline v2 — text extraction (production)
-├── n8n-workflow-v3.json    ← Pipeline v3 — vision + rate limiting
-├── sample_employees.csv    ← Sample employee list for testing
-├── samples/                ← Sample bank slip images for vision testing
-├── APP_WALKTHROUGH.md      ← Detailed app walkthrough
-├── MONDAY_DEMO_PLAN.md     ← Demo presentation plan
-├── *.mmd                   ← Mermaid diagram sources
-└── Rita Doc/               ← Reference workflow documentation
+├── index.html                  ← Dashboard app (single-file, ~2,400 lines)
+├── vercel.json                 ← Vercel routing config
+├── README.md
+├── api/
+│   └── webhook.js              ← Vercel serverless endpoint for n8n
+│
+├── pipelines/                  ← n8n workflow JSON files
+│   ├── n8n-workflow-v3.json    (active — vision + rate limiting)
+│   ├── n8n-workflow-v2.json    (backup — text extraction only)
+│   └── n8n-workflow-v1.json    (original archived)
+│
+├── diagrams/                   ← Mermaid sequence & system diagrams
+│   ├── EMI_Sequence_Diagram.mmd
+│   ├── EMI_System_Workflow.mmd
+│   └── n8n_Pipeline_Diagram.mmd
+│
+├── samples/                    ← Test data, bank slips, demo scripts
+│   ├── bank_slip_acme_innovations.png
+│   ├── bank_slip_gintar_solutions.png
+│   ├── sample_employees.csv
+│   └── demo_email_*.md + DEMO_SCRIPT_*.md
+│
+└── docs/                       ← Documentation, analysis, plans
+    ├── APP_WALKTHROUGH.md
+    ├── Phase2_Execution_Log.md
+    ├── Meeting_Analysis_2026-04-06.md
+    ├── Phase3_*.md (analysis files)
+    └── Rita_Doc/ (workflow reference)
 ```
 
 ## Setup

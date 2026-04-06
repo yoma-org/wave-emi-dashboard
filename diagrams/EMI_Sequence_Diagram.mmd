@@ -1,0 +1,146 @@
+sequenceDiagram
+    autonumber
+
+    actor Client as Corporate Client
+    participant Email as Gmail Inbox
+    participant AI as AI Pipeline<br/>(n8n + Groq)
+    participant App as EMI Dashboard<br/>(Vercel)
+    actor Maker as Maker<br/>(Intake)
+    actor Finance as Finance<br/>Manager
+    actor Checker as E-Money<br/>Checker
+    participant Utiba as Utiba<br/>Platform
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 1 — REQUEST INTAKE (Automated)
+    %% ═══════════════════════════════════════════
+
+    rect rgb(230, 245, 255)
+        Note over Client, AI: Phase 1 — Request Intake (AI Automated)
+
+        Client ->> Email: Send disbursement request<br/>+ bank slip + payroll doc
+        Email ->> AI: Gmail Trigger detects new email
+
+        AI ->> AI: Text AI (llama-3.3-70b)<br/>Extract: company, amount,<br/>type, approvers, body
+
+        alt Has attachment (image/PDF)
+            AI ->> AI: Vision AI (llama-4-scout)<br/>Extract: doc amount, signers,<br/>doc type, confidence
+            AI ->> AI: Cross-validate amounts<br/>Flag MISMATCH if >1% diff
+        end
+
+        AI ->> AI: Authority Matrix check<br/>(Sales HOD + Finance Mgr)
+        AI ->> App: Create ticket via URL<br/>(base64 encoded payload)
+        AI ->> Client: Email notification<br/>with dashboard link
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 1b — EMPLOYEE LIST & BANK SLIP
+    %% ═══════════════════════════════════════════
+
+    rect rgb(255, 248, 230)
+        Note over Maker, App: Phase 1b — Upload & Pre-checks (Human + System)
+
+        Maker ->> App: Review AI-parsed ticket
+        Maker ->> App: Upload employee list<br/>(CSV/XLSX — client-side only)
+        App ->> App: Validate MSISDNs<br/>Clean Myanmar name prefixes<br/>Count employees
+
+        opt Bank slip available
+            Maker ->> App: Upload bank slip image
+        end
+
+        App ->> App: Reconcile amounts<br/>Email vs Bank Slip vs Employee Total
+        App ->> Maker: Show pre-check results<br/>+ any warnings
+        Maker ->> App: Submit for Finance Approval
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 3 — FINANCE APPROVAL
+    %% ═══════════════════════════════════════════
+
+    rect rgb(255, 243, 230)
+        Note over Finance, App: Phase 3 — Finance Approval (Human Decision)
+
+        App ->> Finance: Ticket appears in<br/>Finance Approval queue
+        Finance ->> App: Review: AI results,<br/>authority matrix,<br/>amounts, pre-checks
+
+        alt Approved
+            Finance ->> App: Approve + sign name
+            App ->> App: Status → READY_FOR_CHECKER
+        else Rejected
+            Finance ->> App: Reject + reason
+            App ->> Maker: Notification: rejected
+        end
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 2+5 — FILE PREPARATION
+    %% ═══════════════════════════════════════════
+
+    rect rgb(230, 255, 230)
+        Note over Checker, Utiba: Phase 4 — File Preparation (System Generated)
+
+        Checker ->> App: Start Processing
+        App ->> App: Generate 7 Utiba CSV files:<br/>File 1: DMM → Disbursement<br/>File 2: Disbursement → Corporate<br/>FeeDisbursement, SalaryToMA,<br/>SalaryToOTC, MapAgent, UnmapAgent
+        Checker ->> App: Download CSV files
+        Checker ->> Utiba: Upload files manually<br/>(no API — must stay human)
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 3 — MAKER-CHECKER VALIDATION
+    %% ═══════════════════════════════════════════
+
+    rect rgb(245, 230, 255)
+        Note over Checker, App: Phase 5 — Checker Review (Human Control Point)
+
+        App ->> Checker: Present validation summary<br/>+ file verification status
+
+        alt Approved
+            Checker ->> App: Approve + sign name
+        else Exceptions found
+            Checker ->> App: Reject with notes
+            App ->> Maker: Return for correction
+        end
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 4 — GROUP MAPPING (OTC only)
+    %% ═══════════════════════════════════════════
+
+    opt SalaryToOTC transactions only
+        rect rgb(240, 240, 255)
+            Note over Checker, Utiba: Phase 5b — Group Mapping (OTC Only)
+
+            Checker ->> App: Configure group mapping
+            App ->> App: Generate MapAgent +<br/>UnmapAgent CSV files
+            Checker ->> Utiba: Upload map/unmap files
+        end
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 6 — DISBURSEMENT MONITORING
+    %% ═══════════════════════════════════════════
+
+    rect rgb(230, 255, 245)
+        Note over Checker, Utiba: Phase 6 — Disbursement & Monitoring
+
+        Utiba ->> Utiba: Process bulk disbursement
+        Checker ->> App: Monitor progress<br/>(success / failed / pending)
+
+        alt All successful
+            App ->> Checker: Show completion summary
+        else Some failed
+            App ->> Checker: Flag failed transactions<br/>for reversal (Phase 7)
+        end
+    end
+
+    %% ═══════════════════════════════════════════
+    %% PHASE 7 — CLOSE CASE
+    %% ═══════════════════════════════════════════
+
+    rect rgb(245, 245, 245)
+        Note over Checker, Client: Phase 7 — Close & Archive
+
+        Checker ->> App: Complete closing checklist
+        App ->> App: Archive ticket data
+        App ->> Client: Completion notification<br/>(drafted by system)
+        App ->> Maker: Dashboard updated
+    end
