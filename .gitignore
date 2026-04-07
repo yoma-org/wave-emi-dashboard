@@ -16,3 +16,18 @@ desktop.ini
 
 # Node (if any local tooling)
 node_modules/
+
+# Sensitive / real bank documents — NEVER push to public repo
+research/real_samples/PyiGyiKhin.pdf
+research/real_samples/Yoma_Bank_BBP_User_Manual_v2.pdf
+research/real_samples/IFC_Myanmar_Mobile_Money_Report.pdf
+research/real_samples/myanmar_nrc_data.json
+research/real_samples/yoma_bank_docs/
+research/real_samples/wave_money_screenshots/
+research/real_samples/nrc_datasets/
+research/real_samples/culture_survey_bilingual/
+
+# Meeting transcripts — internal, contains real names & discussions
+Yoma Bank - Daily Standup*.vtt
+Yoma Bank - Daily Standup*.docx
+_meetings/

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;background:#fff;color:#222;font-size:13px}
+.slip{border:2px solid #1a3a5c;padding:0;border-radius:4px;overflow:hidden}
+.slip-header{background:linear-gradient(135deg,#1a3a5c,#2d5a8c);color:#fff;padding:16px 20px;text-align:center}
+.slip-header h2{margin:0;font-size:18px;letter-spacing:2px}
+.slip-header .sub{font-size:11px;margin-top:4px;opacity:.8}
+.slip-body{padding:16px 20px}
+.row{display:grid;grid-template-columns:200px 1fr;gap:0;border-bottom:1px solid #ddd;font-size:12px}
+.row:last-child{border-bottom:none}
+.row .label{padding:8px 12px;font-weight:bold;color:#1a3a5c;background:#f0f4f8}
+.row .value{padding:8px 12px}
+.amount-row .value{font-size:18px;font-weight:bold;color:#1a3a5c}
+.amount-words{font-style:italic;color:#666;font-size:11px;padding:4px 12px 8px}
+.divider{height:2px;background:#1a3a5c;margin:12px 0}
+.stamp-area{display:flex;justify-content:space-between;align-items:flex-end;margin-top:24px;padding:0 20px 20px}
+.stamp-box{text-align:center;width:160px}
+.stamp-line{border-top:1px solid #333;margin-top:50px;padding-top:4px;font-size:10px;color:#555}
+.stamp-circle{width:60px;height:60px;border:2px solid #c00;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:8px;color:#c00;font-weight:bold;text-align:center;transform:rotate(-15deg)}
+.footer{text-align:center;font-size:9px;color:#999;padding:8px;border-top:1px solid #ddd;background:#f9f9f9}
+.receipt-no{text-align:right;font-size:10px;color:#999;padding:4px 20px}
+</style></head><body>
+
+<div class="slip">
+<div class="slip-header">
+<h2>YOMA BANK LIMITED</h2>
+<div class="sub">DEPOSIT / TRANSFER RECEIPT</div>
+</div>
+
+<div class="receipt-no">Receipt No: YB-2026-0403-87654</div>
+
+<div class="slip-body">
+<div class="row"><div class="label">Branch</div><div class="value">Yangon Main Branch (001)</div></div>
+<div class="row"><div class="label">Date & Time</div><div class="value">2026-04-03 14:32:05 (MMT)</div></div>
+<div class="row"><div class="label">Transaction ID</div><div class="value">YOMA-TXN-20260403-87654</div></div>
+
+<div class="divider"></div>
+
+<div class="row"><div class="label">Depositor Name</div><div class="value">Pacific Star Garment Factory</div></div>
+<div class="row"><div class="label">Depositor Account</div><div class="value">0014-2234-5678-9012</div></div>
+<div class="row"><div class="label">Beneficiary</div><div class="value">Wave Money Corporate Account</div></div>
+
+<div class="divider"></div>
+
+<div class="row amount-row"><div class="label">Amount (MMK)</div><div class="value">8,500,000</div></div>
+<div class="amount-words">Eight Million Five Hundred Thousand Myanmar Kyats Only</div>
+
+<div class="row"><div class="label">Currency</div><div class="value">MMK (Myanmar Kyat)</div></div>
+<div class="row"><div class="label">Purpose of Transaction</div><div class="value">Corporate Salary Disbursement</div></div>
+<div class="row"><div class="label">Remark</div><div class="value">SAL-APR26-PACIFIC-STAR</div></div>
+<div class="row"><div class="label">Payment Method</div><div class="value">Internal Bank Transfer</div></div>
+</div>
+
+<div class="stamp-area">
+<div class="stamp-box">
+<div class="stamp-circle">VERIFIED<br>YOMA</div>
+<div class="stamp-line">Verified by: Ma Hnin Wai<br>Teller ID: T-0452</div>
+</div>
+<div class="stamp-box">
+<div class="stamp-line">Branch Manager<br>U Aung Myo Hein</div>
+</div>
+</div>
+
+<div class="footer">
+Yoma Bank Limited | SWIFT: YOMAMMMYXXX | Licensed by Central Bank of Myanmar<br>
+This receipt is computer-generated and is valid without signature for electronic transfers.
+</div>
+</div>
+</body></html>

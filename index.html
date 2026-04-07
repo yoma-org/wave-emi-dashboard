@@ -373,7 +373,7 @@ textarea{resize:vertical;min-height:120px;}
   <div class="nav-logo"><span>W</span> Wave EMI Pipeline</div>
   <div class="nav-links">
     <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</button>
-    <button class="nav-btn" onclick="showPage('emails')" id="nav-emails">Incoming Emails</button>
+    <button class="nav-btn" onclick="showPage('emails')" id="nav-emails">Ticket List</button>
     <button class="nav-btn" onclick="showPage('finance')" id="nav-finance">Finance Approval</button>
     <button class="nav-btn" onclick="showPage('emoney')" id="nav-emoney">E-Money Review</button>
   </div>
@@ -388,7 +388,7 @@ textarea{resize:vertical;min-height:120px;}
       <option value="Finance">Finance</option>
       <option value="E-Money">E-Money</option>
     </select>
-    <span class="nav-tag n8n-tag" title="n8n workflow automation connected">n8n</span>
+    <span class="nav-tag n8n-tag" title="Automated email processing connected">Auto</span>
     <span class="nav-tag" id="privacy-toggle" onclick="togglePrivacy()" style="cursor:pointer" title="Toggle sensitive data blur">Private</span>
     <span class="nav-tag" onclick="document.getElementById('demo-modal').classList.add('open')">DEMO</span>
   </div>
@@ -396,7 +396,7 @@ textarea{resize:vertical;min-height:120px;}
 
 <div class="mobile-menu">
   <button class="nav-btn" onclick="showPage('dashboard');this.parentElement.classList.remove('open')">Dashboard</button>
-  <button class="nav-btn" onclick="showPage('emails');this.parentElement.classList.remove('open')">Incoming Emails</button>
+  <button class="nav-btn" onclick="showPage('emails');this.parentElement.classList.remove('open')">Ticket List</button>
   <button class="nav-btn" onclick="showPage('finance');this.parentElement.classList.remove('open')">Finance Approval</button>
   <button class="nav-btn" onclick="showPage('emoney');this.parentElement.classList.remove('open')">E-Money Review</button>
 </div>
@@ -961,7 +961,7 @@ function renderDashboard(){
   `;
 
   if(tickets.length === 0){
-    html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\uD83D\uDCE7</div><h3>No tickets yet</h3><p>Head over to Incoming Emails to parse your first disbursement request and create a ticket.</p><button class="btn btn-primary" onclick="showPage(\'emails\')">Go to Incoming Emails</button></div></div>';
+    html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\uD83D\uDCE7</div><h3>No tickets yet</h3><p>Head over to Ticket List to parse your first disbursement request and create a ticket.</p><button class="btn btn-primary" onclick="showPage(\'emails\')">Go to Ticket List</button></div></div>';
   } else {
     html += `<div class="card"><div class="card-header"><div class="card-title">All Tickets</div></div>
       <div class="table-scroll"><table class="ticket-table"><thead><tr>
@@ -973,7 +973,7 @@ function renderDashboard(){
       let trackB = '<span style="color:#856404;font-weight:600">\u23F3 Pending</span>';
       if(t.finance_status==='APPROVED') trackB = '<span style="color:#16a34a;font-weight:600">\u2705 Approved</span>';
       else if(t.finance_status==='REJECTED') trackB = '<span style="color:#dc2626;font-weight:600">\u274C Rejected</span>';
-      const n8nBadge = t.n8n_source ? ' <span style="background:#FF6D5A;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">n8n</span>' : '';
+      const n8nBadge = t.n8n_source ? ' <span style="background:#FF6D5A;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">Auto</span>' : '';
       let visionCol = '<span style="color:#94a3b8;font-size:12px">—</span>';
       if(t.vision_parsed){
         const conf = (t.vision_confidence*100).toFixed(0);
@@ -1043,13 +1043,13 @@ function renderEmails(){
     return;
   }
 
-  let html = '<div class="section-title">\uD83D\uDCE7 Incoming Emails</div><div class="section-sub">Parse client emails to create disbursement tickets.</div>';
+  let html = '<div class="section-title">\uD83D\uDCE7 Ticket List</div><div class="section-sub">Review disbursement tickets — auto-created from email or manually parsed.</div>';
 
   // n8n automated intake section
   const n8nTickets = allTickets().filter(t => t.n8n_source);
   if(n8nTickets.length > 0){
     html += `<div class="card" style="border-left:4px solid #FF6D5A"><div class="card-body">
-      <strong>\uD83E\uDD16 Automated Intake (n8n)</strong>
+      <strong>Email Processing</strong>
       <span style="color:var(--muted);font-size:13px;margin-left:8px">${n8nTickets.length} ticket(s) auto-created from email</span>
       <div style="margin-top:8px">`;
     n8nTickets.forEach(t => {
@@ -1083,7 +1083,7 @@ function renderEmails(){
         })()}
         ${t.body_preview?'<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-style:italic">&ldquo;'+t.body_preview.substring(0,100)+(t.body_preview.length>100?'... &rdquo;<span class="expander-toggle" onclick="event.stopPropagation();this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'" style="font-style:normal;font-size:12px"> Show full email</span><div style="display:none;margin-top:6px;padding:10px 12px;background:var(--bg);border-radius:8px;font-style:italic;line-height:1.5">&ldquo;'+t.body_preview+'&rdquo;</div>':' &rdquo;')+'</div>':''}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <span style="color:var(--success);font-size:12px;font-weight:600">Parsed &rarr; ${t.id}</span>
+          <span style="color:${t.scenario==='AMOUNT_MISMATCH'?'var(--danger)':t.scenario==='MISSING_APPROVAL'?'var(--warn)':'var(--success)'};font-size:12px;font-weight:600">${t.scenario==='AMOUNT_MISMATCH'?'Flagged':'Parsed'} &rarr; ${t.id}</span>
           <button class="btn btn-outline btn-sm" onclick="openTicketDetail('${t.id}');event.stopPropagation()">View Details</button>
         </div>`;
 
@@ -1101,14 +1101,14 @@ function renderEmails(){
           var cleanedCount = processed.filter(function(r){return r.Name_Changed;}).length;
           var empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
           html += `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px" onclick="event.stopPropagation()">`;
-          if(empConf) html += `<div style="margin-bottom:8px"><span class="badge badge-purple">AI Pre-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: ${empConf}% &middot; ${processed.length} employees &middot; Review before submitting</span></div>`;
+          if(empConf) html += `<div style="margin-bottom:8px"><span class="badge badge-purple">Auto-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: ${empConf}% &middot; ${processed.length} employees &middot; Review before submitting</span></div>`;
           html += `<strong style="font-size:12px">&#128202; ${processed.length} records &middot; ${invalidCount} invalid phone/account &middot; ${cleanedCount} names cleaned</strong>`;
           html += '<div style="max-height:200px;overflow-y:auto;margin-top:6px"><table class="csv-table"><thead><tr><th>Name</th><th>Cleaned</th><th>Phone/Acct</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
           processed.forEach(function(r){ html += '<tr class="'+(r.MSISDN_Valid?'':'invalid')+'"><td>'+r.Original_Name+'</td><td>'+r.Cleaned_Name+'</td><td>'+r.MSISDN+'</td><td>'+r.Validation_Status+'</td><td>'+fmt(r.Amount)+'</td></tr>'; });
           html += '</tbody></table></div>';
           if(invalidCount > 0) html += '<div class="alert alert-warn" style="margin-top:6px;font-size:12px">&#9888; '+invalidCount+' phone/account number(s) failed validation.</div>';
           var recChecks = reconcileAmounts(t, processed);
-          html += '<div class="amounts-check" style="margin-top:8px"><strong style="font-size:12px;display:block;margin-bottom:6px">Amount Reconciliation</strong>';
+          html += '<div class="amounts-check" style="margin-top:8px"><strong style="font-size:12px;display:block;margin-bottom:6px">Amount Check</strong>';
           recChecks.forEach(function(chk){ html += '<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>'; });
           html += '</div>';
           html += `<div class="btn-group" style="margin-top:8px"><button class="btn btn-success btn-sm" onclick="handleN8nSubmit('${t.id}','${eid}');event.stopPropagation()">Save & Submit for Finance</button></div>`;
@@ -1118,10 +1118,10 @@ function renderEmails(){
           html += `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px" onclick="event.stopPropagation()">
             <strong style="font-size:12px">Step 2 &mdash; Upload Employee List</strong>
             <div class="upload-zone" style="margin-top:6px" id="emp-zone-${eid}">
-              <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg" onchange="handleEmployeeUpload(this,'${eid}','${t.id}')"/>
+              <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg,.pdf" onchange="handleEmployeeUpload(this,'${eid}','${t.id}')"/>
               <div class="upload-icon">&#128196;</div>
               <div class="upload-label">Drop or click to upload</div>
-              <div class="upload-hint">CSV, XLSX, or Payroll Image (PNG/JPG)</div>
+              <div class="upload-hint">CSV, Excel, or Document (PNG/JPG/PDF)</div>
             </div>
             <div id="emp-preview-${eid}"></div>
           </div>`;
@@ -1134,7 +1134,7 @@ function renderEmails(){
   }
 
   // n8n webhook configuration info
-  html += `<div class="expander-toggle" onclick="this.nextElementSibling.classList.toggle('open')">\u25B6 n8n Webhook Configuration</div>
+  html += `<div class="expander-toggle" onclick="this.nextElementSibling.classList.toggle('open')">\u25B6 System Configuration</div>
   <div class="expander-body"><div style="font-size:13px;color:var(--muted)">
     <p><strong>Dashboard URL:</strong> <code>https://wave-emi-dashboard.vercel.app/?n8n_ticket={BASE64_JSON}</code></p>
     <p><strong>JSON Schema:</strong></p>
@@ -1190,10 +1190,10 @@ function renderEmails(){
         // Employee upload
         html += `<div style="margin-top:16px"><strong style="font-size:14px">Step 2 \u2014 Upload Employee List</strong>
           <div class="upload-zone" style="margin-top:8px" id="emp-zone-${eid}">
-            <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg" onchange="handleEmployeeUpload(this,'${eid}','${tid}')"/>
+            <input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg,.pdf" onchange="handleEmployeeUpload(this,'${eid}','${tid}')"/>
             <div class="upload-icon">\uD83D\uDCC4</div>
             <div class="upload-label">Drop or click to upload employee list</div>
-            <div class="upload-hint">CSV, XLSX, or Payroll Image (PNG/JPG)</div>
+            <div class="upload-hint">CSV, Excel, or Document (PNG/JPG/PDF)</div>
           </div>
           <div id="emp-preview-${eid}"></div>
         </div>`;
@@ -1299,7 +1299,7 @@ async function handlePayrollImageExtraction(file, emailId, ticketId){
     previewEl.innerHTML = '<div class="alert alert-warn" style="margin-top:8px">Image too large (max 3 MB). Please resize or use CSV/XLSX.</div>';
     return;
   }
-  previewEl.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div><div style="margin-top:8px;color:#7c3aed;font-weight:600">AI extracting employee list...</div><div style="font-size:12px;color:var(--muted)">Groq Vision AI analyzing document</div></div>';
+  previewEl.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div><div style="margin-top:8px;color:#7c3aed;font-weight:600">AI extracting employee list...</div><div style="font-size:12px;color:var(--muted)">AI analyzing document</div></div>';
   try {
     var base64 = await fileToBase64(file);
     var resp = await fetch('/api/extract-employees',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:base64,mime_type:file.type})});
@@ -1318,14 +1318,14 @@ async function handlePayrollImageExtraction(file, emailId, ticketId){
     var conf = result.confidence?(result.confidence*100).toFixed(0):'?';
     var preview = '<div style="margin-top:12px"><span class="badge badge-purple">AI Extracted</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: '+conf+'% &middot; '+processed.length+' employees</span></div>';
     preview += '<div style="margin-top:8px"><strong>&#128202; '+processed.length+' records &middot; '+invalidCount+' invalid &middot; '+cleanedCount+' names cleaned</strong></div>';
-    preview += '<div style="max-height:300px;overflow-y:auto;margin-top:8px"><table class="csv-table"><thead><tr><th>Original Name</th><th>Cleaned Name</th><th>MSISDN</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
+    preview += '<div style="max-height:300px;overflow-y:auto;margin-top:8px"><table class="csv-table"><thead><tr><th>Original Name</th><th>Cleaned Name</th><th>Phone/Acct</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
     processed.forEach(function(r){preview+='<tr class="'+(r.MSISDN_Valid?'':'invalid')+'"><td>'+r.Original_Name+'</td><td>'+r.Cleaned_Name+'</td><td>'+r.MSISDN+'</td><td>'+r.Validation_Status+'</td><td>'+fmt(r.Amount)+'</td></tr>';});
     preview += '</tbody></table></div>';
     if(invalidCount>0) preview += '<div class="alert alert-warn" style="margin-top:8px">&#9888; '+invalidCount+' phone/account number(s) failed validation.</div>';
     var ticket = state.tickets[ticketId];
     if(ticket){
       var recChecks = reconcileAmounts(ticket, processed);
-      preview += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:14px;display:block;margin-bottom:8px">Amount Reconciliation</strong>';
+      preview += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:14px;display:block;margin-bottom:8px">Amount Check</strong>';
       recChecks.forEach(function(chk){preview+='<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>';});
       preview += '</div>';
     }
@@ -1371,10 +1371,10 @@ function handleEmployeeUpload(input, emailId, ticketId){
       const cleanedCount = processed.filter(r=>r.Name_Changed).length;
       const total = processed.reduce((s,r)=>s+r.Amount, 0);
 
-      let preview = `<div style="margin-top:12px"><strong>\uD83D\uDCCA ${processed.length} records \u00B7 ${invalidCount} invalid MSISDNs \u00B7 ${cleanedCount} names cleaned</strong></div>`;
+      let preview = `<div style="margin-top:12px"><strong>\uD83D\uDCCA ${processed.length} records \u00B7 ${invalidCount} invalid phone/account \u00B7 ${cleanedCount} names cleaned</strong></div>`;
 
       // Preview table
-      preview += '<div style="max-height:300px;overflow-y:auto;margin-top:8px"><table class="csv-table"><thead><tr><th>Original Name</th><th>Cleaned Name</th><th>MSISDN</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
+      preview += '<div style="max-height:300px;overflow-y:auto;margin-top:8px"><table class="csv-table"><thead><tr><th>Original Name</th><th>Cleaned Name</th><th>Phone/Acct</th><th>Status</th><th>Amount</th></tr></thead><tbody>';
       processed.forEach(r => {
         preview += `<tr class="${r.MSISDN_Valid?'':'invalid'}"><td>${r.Original_Name}</td><td>${r.Cleaned_Name}</td><td>${r.MSISDN}</td><td>${r.Validation_Status}</td><td>${fmt(r.Amount)}</td></tr>`;
       });
@@ -1385,7 +1385,7 @@ function handleEmployeeUpload(input, emailId, ticketId){
       // Three-way reconciliation
       const ticket = state.tickets[ticketId];
       const recChecks = reconcileAmounts(ticket, processed);
-      preview += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:14px;display:block;margin-bottom:8px">\uD83D\uDCB0 Amount Reconciliation</strong>';
+      preview += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:14px;display:block;margin-bottom:8px">\uD83D\uDCB0 Amount Check</strong>';
       recChecks.forEach(chk => {
         const cls = chk.status==='pass'?'alert-success':chk.status==='fail'?'alert-danger':'alert-warn';
         preview += `<div class="ac-row"><span class="ac-icon">${reconcileIcon(chk.status)}</span><span class="ac-label">${chk.check}</span><span class="ac-detail">${chk.detail}</span></div>`;
@@ -1509,11 +1509,11 @@ function renderFinance(){
 
     // Pre-check results
     html += `<div style="margin:16px 0"><strong style="font-size:13px">\uD83D\uDCCA Pre-check Results</strong><br>
-      <span style="font-size:13px;color:var(--muted)">${ticket.total_employees||0} employees \u00B7 ${ticket.invalid_msisdn_count||0} invalid MSISDNs \u00B7 ${ticket.names_cleaned_count||0} names cleaned</span></div>`;
+      <span style="font-size:13px;color:var(--muted)">${ticket.total_employees||0} employees \u00B7 ${ticket.invalid_msisdn_count||0} invalid phone/account \u00B7 ${ticket.names_cleaned_count||0} names cleaned</span></div>`;
 
     // Reconciliation
     if(ticket.reconciliation){
-      html += '<div class="amounts-check"><strong style="font-size:14px;display:block;margin-bottom:8px">\uD83D\uDCB0 Amount Reconciliation</strong>';
+      html += '<div class="amounts-check"><strong style="font-size:14px;display:block;margin-bottom:8px">\uD83D\uDCB0 Amount Check</strong>';
       ticket.reconciliation.forEach(chk => {
         html += `<div class="ac-row"><span class="ac-icon">${reconcileIcon(chk.status)}</span><span class="ac-label">${chk.check}</span><span class="ac-detail">${chk.detail}</span></div>`;
       });
@@ -1630,7 +1630,7 @@ function renderEmoney(){
         </div>`;
       if(ticket.employee_data && ticket.employee_data.length > 0){
         html += `<div class="expander-toggle" onclick="this.nextElementSibling.classList.toggle('open')">\u25B6 Employee List (${ticket.employee_data.length} rows)</div>
-          <div class="expander-body"><div style="max-height:200px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>MSISDN</th><th>Amount</th></tr></thead><tbody>`;
+          <div class="expander-body"><div style="max-height:200px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>Phone/Acct</th><th>Amount</th></tr></thead><tbody>`;
         ticket.employee_data.slice(0,20).forEach(r => {
           html += `<tr><td>${r.Cleaned_Name}</td><td>${r.MSISDN}</td><td>${fmt(r.Amount)}</td></tr>`;
         });
@@ -1974,7 +1974,7 @@ function renderEmoneyMapping(){
   }
   const r = ticketToRequest(state.tickets[currentEmoneyTid]);
   const emps = r.employees;
-  const makeTable = ()=>`<table class="csv-table"><thead><tr><th>MSISDN</th><th>Agent ID</th></tr></thead><tbody>`+
+  const makeTable = ()=>`<table class="csv-table"><thead><tr><th>Phone/Acct</th><th>Agent ID</th></tr></thead><tbody>`+
     emps.map(e=>`<tr><td style="font-family:monospace">${e.msisdn}</td><td>${e.agentId||'—'}</td></tr>`).join('')+
     `</tbody></table>`;
 
@@ -2044,7 +2044,7 @@ function renderEmoneyMonitoring(){
   html += `<div class="card" style="margin-bottom:16px">
     <div class="card-header"><span class="card-title">Transaction Progress</span><span id="emon-counter" class="badge-ready" style="font-size:12px;padding:4px 10px">0 / ${emps.length}</span></div>
     <div class="card-body" style="padding:0;overflow-x:auto">
-      <table class="txn-table"><thead><tr><th>#</th><th>MSISDN</th><th>Amount (MMK)</th><th>Status</th></tr></thead>
+      <table class="txn-table"><thead><tr><th>#</th><th>Phone/Acct</th><th>Amount (MMK)</th><th>Status</th></tr></thead>
       <tbody id="emon-txn-body"></tbody></table>
     </div>
   </div>`;
@@ -2397,18 +2397,18 @@ function togglePrivacy(){
 // ─── AI PIPELINE RESULTS & TICKET DETAIL MODAL ──────────────────────────────
 
 function renderAIPipelineSection(t){
-  let html = '<div class="detail-section"><div class="detail-section-title">AI Pipeline Analysis</div>';
+  let html = '<div class="detail-section"><div class="detail-section-title">AI Analysis</div>';
   const approversList = (t.email_approvals||t.approvals||[]).map(a=>'&#10003; '+a.role).join('<br>')||'None found';
   if(t.vision_parsed){
     const conf = (t.vision_confidence*100).toFixed(0);
     html += '<div class="detail-grid">';
-    html += `<div class="ai-card text-ai"><div class="ai-card-title">Text Extraction<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-3.3-70b</span></div>
+    html += `<div class="ai-card text-ai"><div class="ai-card-title">Email Analysis</div>
       <div class="ai-field"><div class="ai-field-label">Company</div><div class="ai-field-value">${t.company}</div></div>
       <div class="ai-field" style="${t.has_mismatch?'background:#fef3c7;padding:6px 8px;border-radius:6px;margin:-2px -8px':t.amount_on_document?'background:#dcfce7;padding:6px 8px;border-radius:6px;margin:-2px -8px':''}"><div class="ai-field-label">Amount (from email)</div><div class="ai-field-value">${fmt(t.amount_requested)} MMK${t.has_mismatch?' &#9888;':t.amount_on_document?' &#10003;':''}</div></div>
       <div class="ai-field"><div class="ai-field-label">Type</div><div class="ai-field-value">${t.type}</div></div>
       <div class="ai-field"><div class="ai-field-label">Approvers</div><div class="ai-field-value">${approversList}</div></div>
     </div>`;
-    html += `<div class="ai-card vision-ai"><div class="ai-card-title">Document Vision<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-4-scout</span></div>
+    html += `<div class="ai-card vision-ai"><div class="ai-card-title">Document Analysis</div>
       <div class="ai-field"><div class="ai-field-label">Document Type</div><div class="ai-field-value">${t.document_type||'Unknown'}</div></div>
       <div class="ai-field" style="${t.has_mismatch?'background:#fef3c7;padding:6px 8px;border-radius:6px;margin:-2px -8px':t.amount_on_document?'background:#dcfce7;padding:6px 8px;border-radius:6px;margin:-2px -8px':''}"><div class="ai-field-label">Amount (from document)</div><div class="ai-field-value">${t.amount_on_document?fmt(t.amount_on_document)+' MMK':'N/A'}${t.has_mismatch?' &#9888;':t.amount_on_document?' &#10003;':''}</div></div>
       <div class="ai-field"><div class="ai-field-label">Confidence</div><div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div><div style="font-size:12px;margin-top:2px;color:#7c3aed;font-weight:600">${conf}%</div></div>
@@ -2423,11 +2423,11 @@ function renderAIPipelineSection(t){
       var pct = t.amount_requested ? ((diff / t.amount_requested) * 100).toFixed(1) : '0';
       html += `<div class="cross-validation-box mismatch"><div><strong>AMOUNT MISMATCH</strong><br>Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(diff)} MMK (${pct}%) &mdash; Flagged for human review</span></div></div>`;
     } else if(t.amount_on_document){
-      html += `<div class="cross-validation-box match"><div><strong>CROSS-VALIDATION PASSED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
+      html += `<div class="cross-validation-box match"><div><strong>AMOUNT VERIFIED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
     }
   } else {
     html += '<div class="detail-grid">';
-    html += `<div class="ai-card text-ai"><div class="ai-card-title">Text Extraction<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">Groq llama-3.3-70b</span></div>
+    html += `<div class="ai-card text-ai"><div class="ai-card-title">Email Analysis</div>
       <div class="ai-field"><div class="ai-field-label">Company</div><div class="ai-field-value">${t.company}</div></div>
       <div class="ai-field"><div class="ai-field-label">Amount</div><div class="ai-field-value">${fmt(t.amount_requested)} MMK</div></div>
       <div class="ai-field"><div class="ai-field-label">Type</div><div class="ai-field-value">${t.type}</div></div>
@@ -2456,7 +2456,7 @@ function openTicketDetail(ticketId){
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         ${typeBadgeHtml(t.type)} ${riskBadgeHtml(t.risk_level)}
         ${t.scenario&&t.scenario!=='NORMAL'?'<span class="badge badge-warn">'+t.scenario.replace(/_/g,' ')+'</span>':''}
-        ${t.n8n_source?'<span style="background:#FF6D5A;color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;font-weight:700">n8n</span>':''}
+        ${t.n8n_source?'<span style="background:#FF6D5A;color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;font-weight:700">Auto</span>':''}
         ${t.vision_parsed?'<span class="badge badge-purple">Vision'+((t.vision_confidence||0)>0?' '+(t.vision_confidence*100).toFixed(0)+'%':'')+'</span>':''}
       </div>
     </div>
