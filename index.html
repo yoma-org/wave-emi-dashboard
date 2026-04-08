@@ -2651,7 +2651,10 @@ function openTicketDetail(ticketId){
     if(fullBody){
       const shortBody = fullBody.substring(0,120);
       const isLong = fullBody.length > 120;
-      html += `<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;font-style:italic;color:var(--muted);font-size:13px;line-height:1.5">&ldquo;${shortBody}${isLong?'...&rdquo; <span onclick="this.parentElement.querySelector(\'.full-body\').style.display=\'block\';this.style.display=\'none\'" style="font-style:normal;color:var(--blue);cursor:pointer;font-size:12px">Show full email</span><div class="full-body" style="display:none;margin-top:8px;white-space:pre-line">${fullBody}&rdquo;</div>':'&rdquo;'}</div>`;
+      html += `<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;font-style:italic;color:var(--muted);font-size:13px;line-height:1.5">&ldquo;${shortBody}${isLong?'...':''}${isLong?'':''}&rdquo;</div>`;
+      if(isLong){
+        html += `<div style="margin-top:4px"><span onclick="this.style.display='none';this.nextElementSibling.style.display='block'" style="color:var(--blue);cursor:pointer;font-size:12px">Show full email</span><div style="display:none;margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;font-style:italic;color:var(--muted);font-size:13px;line-height:1.5;white-space:pre-line">&ldquo;${fullBody}&rdquo;</div></div>`;
+      }
     }
     if(t.has_attachments) html += `<div style="margin-top:8px">Attachments: ${(t.attachment_names||[]).join(', ')||t.attachment_count+' file(s)'}</div>`;
     html += '</div></div></div></div>';
