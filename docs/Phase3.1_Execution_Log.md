@@ -180,6 +180,71 @@
 
 ---
 
+### Step 7 (EXPANDED): v5 Pipeline — Dual Vision (Groq + Gemini PDF)
+- **Status:** DONE
+- **Time:** ~10 PM - 11:30 PM Apr 7
+- **What was built:** v5 pipeline with dual-path vision — Groq for images, Gemini for PDFs
+- **Claude API attempt:** FAILED (api_error — likely subscription vs API key issue)
+- **Gemini API attempt 1:** FAILED (404 — wrong model name `gemini-2.0-flash`)
+- **Gemini API attempt 2:** FAILED (circuit_breaker — accumulated errors from previous attempts)
+- **Gemini API attempt 3:** SUCCESS — `gemini-2.5-flash` + circuit breaker reset
+- **Test:** Banana Corp email + TestPDF.pdf attachment
+- **Result:** TKT-008 created with:
+  - Vision 100% confidence
+  - Document type: payroll_form
+  - 3 employees extracted (John Doe, Jane Smith, Bob Johnson)
+  - Amount mismatch detected (email 2.5M vs PDF 24,500)
+  - Red "Flagged" badge working
+- **v5 pipeline file:** `pipelines/n8n-workflow-v5.json` (synced with gemini-2.5-flash)
+- **v4 status:** Deactivated as fallback in n8n Cloud
+
+---
+
+## Session Break — DK Going to Sleep (~11:45 PM Apr 7)
+
+### What's Done Tonight
+1. **P0: Myanmar handwriting OCR** — PARTIAL SUCCESS (11/13 employees, English names 100%, Myanmar script 0%)
+2. **P3a: Label cleanup** — DONE (16 changes, no jargon visible)
+3. **P3b: Badge colors** — DONE (red "Flagged" for mismatch)
+4. **P2 Layer 1: Upload zone** — DONE (.pdf added)
+5. **CHECKPOINT 1** — Pushed to Vercel (commit a9e849c)
+6. **P2 Layer 2: PDF.js** — Code written in index.html (not yet tested via dashboard)
+7. **v5 Pipeline: Dual Vision** — WORKING (Groq images + Gemini PDF). TKT-008 proved PDF extraction works with 100% confidence.
+
+### What's Left for Tomorrow Morning (8:45-10:00 AM)
+- **Step 8: P3c Collapsible sections** in ticket detail modal (~45 min)
+- **Step 10: P3d Info banners** on Finance/E-Money tabs (~10 min)
+- **Remove circuit breaker reset line** in Vision Process node (1 min)
+- **CHECKPOINT 2: Push to Vercel** (5 min)
+- **Quick regression test:** Ctrl+Shift+R + Pacific Star email test (15 min)
+- **Optional polish:** activity log "n8n" text, any remaining jargon
+
+### What's Deployed Now
+- **Dashboard:** Vercel (commit a9e849c) — labels cleaned, badges colored, PDF selectable
+- **Pipeline:** v5 active in n8n Cloud — Groq for images, Gemini for PDFs
+- **v4 pipeline:** Deactivated as fallback
+- **v3 pipeline:** UNTOUCHED (safe fallback)
+
+### Demo Narratives Ready
+- **Myanmar handwriting:** "Consumer AI reads English handwriting perfectly, Myanmar script needs enterprise AI"
+- **PDF support:** "System now handles PDF attachments natively via Gemini — no conversion needed"
+- **UX cleanup:** "No technical jargon. Simple labels. Red flags for mismatches."
+
+### API Keys Used (ROTATE AFTER DEMO)
+- Claude key: used but FAILED (subscription vs API issue)
+- Gemini key: WORKING in v5 pipeline
+- Groq key: WORKING (unchanged from v4)
+
+### Critical Files
+- `index.html` — all UI changes + PDF.js code
+- `pipelines/n8n-workflow-v5.json` — dual vision (synced with gemini-2.5-flash)
+- `pipelines/n8n-workflow-v4.json` — UNTOUCHED fallback
+- `pipelines/n8n-workflow-v3.json` — NEVER touched
+- `docs/ImplementationPlan_Phase3.1.md` — execution guide
+- `research/ai_council_phase3.1/` — 6 AI reviews + synthesis
+
+---
+
 ## Session Break — DK Leaving Work (~7 PM Apr 7)
 
 ### What's Done

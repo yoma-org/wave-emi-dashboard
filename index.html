@@ -227,6 +227,12 @@ textarea{resize:vertical;min-height:120px;}
 .detail-section{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
 .detail-section:last-child{border-bottom:none;padding-bottom:0;}
 .detail-section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-collapsible .section-body{display:none;margin-top:12px;}
+.section-collapsible.open .section-body{display:block;}
+.section-toggle{cursor:pointer;user-select:none;color:var(--blue);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em;padding:10px 0;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;}
+.section-toggle::before{content:'▶';font-size:10px;transition:transform .2s;}
+.section-collapsible.open .section-toggle::before{content:'▼';}
+.section-toggle:hover{color:var(--blue-light);}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .ai-card{border-radius:var(--radius);padding:16px;border:1px solid var(--border);background:var(--surface);}
 .ai-card.text-ai{border-top:3px solid var(--blue);}
@@ -1339,12 +1345,68 @@ async function handlePayrollImageExtraction(file, emailId, ticketId){
   }
 }
 
+// v4.1: Client-side PDF-to-image conversion using PDF.js from CDN
+// Council-validated: JPEG output (Gemini fix), 2000px cap (Grok fix), lazy-load + fallback (Claude/Grok)
+async function handlePdfConversion(file, emailId, ticketId){
+  var previewEl = document.getElementById('emp-preview-'+emailId);
+  if(!previewEl) return;
+  previewEl.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div><div style="margin-top:8px;color:var(--blue);font-weight:600">Converting PDF to image...</div><div style="font-size:12px;color:var(--muted)">Loading PDF.js library</div></div>';
+  try {
+    // Lazy-load PDF.js from CDN only when first PDF is uploaded
+    if(!window.pdfjsLib){
+      await new Promise(function(resolve, reject){
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = resolve;
+        script.onerror = function(){ reject(new Error('PDF.js CDN failed to load')); };
+        document.head.appendChild(script);
+        setTimeout(function(){ reject(new Error('PDF.js load timeout (10s)')); }, 10000);
+      });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    previewEl.querySelector('div:last-child').textContent = 'Rendering PDF page 1...';
+    // Read PDF
+    var arrayBuffer = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    var page = await pdf.getPage(1);
+    // COUNCIL FIX (Grok): Cap width at 2000px to control base64 size
+    var scale = 2.0;
+    var viewport = page.getViewport({scale: scale});
+    if(viewport.width > 2000){
+      scale = (2000 / viewport.width) * scale;
+      viewport = page.getViewport({scale: scale});
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    var ctx = canvas.getContext('2d');
+    await page.render({canvasContext: ctx, viewport: viewport}).promise;
+    // COUNCIL FIX (Gemini): Use JPEG at 0.85 to stay under Vercel 4.5MB payload limit
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    previewEl.querySelector('div:last-child').textContent = 'Extracting employee data...';
+    // Convert to File object and route to existing image extraction
+    var resp = await fetch(dataUrl);
+    var blob = await resp.blob();
+    var imageFile = new File([blob], file.name.replace(/\.pdf$/i,'.jpg'), {type:'image/jpeg'});
+    // Route to existing handlePayrollImageExtraction — no API changes needed
+    handlePayrollImageExtraction(imageFile, emailId, ticketId);
+  } catch(err){
+    // COUNCIL FIX (Claude/Grok): Clear fallback if anything fails
+    previewEl.innerHTML = '<div class="alert alert-warn" style="margin-top:8px"><strong>PDF conversion failed</strong><br>Please save the PDF as a PNG/JPG image and upload that instead.<br><span style="font-size:12px;color:var(--muted)">Error: '+(err.message||'Unknown error')+'</span></div>';
+  }
+}
+
 function handleEmployeeUpload(input, emailId, ticketId){
   const file = input.files[0];
   if(!file) return;
   // v4: Route images to AI extraction
   if(file.type.startsWith('image/')){
     handlePayrollImageExtraction(file, emailId, ticketId);
+    return;
+  }
+  // v4.1: Route PDFs to client-side conversion → then AI extraction
+  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+    handlePdfConversion(file, emailId, ticketId);
     return;
   }
   // Existing CSV/XLSX flow below
@@ -1473,6 +1535,7 @@ function renderFinance(){
   const pending = allTickets().filter(t => t.finance_status === 'PENDING' && t.prechecks_done);
 
   let html = '<div class="section-title">\uD83D\uDCB0 Finance Approval</div><div class="section-sub">Review and approve disbursement tickets awaiting finance sign-off.</div>';
+  html += '<div style="background:#f0f9ff;border-left:4px solid var(--blue);padding:12px 16px;margin-bottom:16px;border-radius:4px;font-size:13px;color:var(--text)">Finance reviews and approves disbursement requests before funds are released. Only tickets that have passed pre-checks appear here.</div>';
 
   if(pending.length === 0){
     html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\u2705</div><h3>All clear</h3><p>No tickets awaiting Finance approval right now. New tickets will appear here after the Intake team submits them.</p></div></div>';
@@ -1603,6 +1666,7 @@ function renderEmoney(){
   const actionable = allTickets().filter(t => processingStatuses.includes(t.status));
 
   let html = '<div class="section-title">\uD83D\uDD01 E-Money Processing</div><div class="section-sub">Manage the full disbursement pipeline: prepare files, checker review, monitoring, and case closure.</div>';
+  html += '<div style="background:#f0f9ff;border-left:4px solid var(--blue);padding:12px 16px;margin-bottom:16px;border-radius:4px;font-size:13px;color:var(--text)">E-Money team processes approved disbursements through the Wave Money system. Only Finance-approved tickets appear here.</div>';
 
   if(actionable.length === 0){
     html += '<div class="card"><div class="empty-state"><div class="empty-state-icon">\uD83D\uDD01</div><h3>No tickets yet</h3><p>Tickets will appear here after Finance approves them. Check back after the Finance team reviews pending requests.</p></div></div>';
@@ -2463,22 +2527,39 @@ function openTicketDetail(ticketId){
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ticket-detail-modal').classList.remove('open')" style="font-size:20px;padding:4px 8px">&times;</button>
   </div>`;
 
-  // AI Pipeline Results
-  if(t.n8n_source||t.ai_parsed) html += renderAIPipelineSection(t);
+  // Amount Verification — ALWAYS VISIBLE (core value signal per DeepSeek council)
+  if(t.n8n_source||t.ai_parsed){
+    if(t.has_mismatch){
+      var diff = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
+      var pct = t.amount_requested ? ((diff / t.amount_requested) * 100).toFixed(1) : '0';
+      html += `<div class="cross-validation-box mismatch" style="margin-bottom:16px"><div><strong>AMOUNT MISMATCH</strong><br>Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(diff)} MMK (${pct}%) &mdash; Flagged for human review</span></div></div>`;
+    } else if(t.amount_on_document){
+      html += `<div class="cross-validation-box match" style="margin-bottom:16px"><div><strong>AMOUNT VERIFIED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
+    }
+  }
 
-  // Email Source
+  // AI Analysis — COLLAPSED by default (technical detail, one click away)
+  if(t.n8n_source||t.ai_parsed){
+    html += '<div class="section-collapsible"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">AI Analysis</div><div class="section-body">';
+    html += renderAIPipelineSection(t);
+    html += '</div></div>';
+  }
+
+  // Email Details — COLLAPSED
   if(t.n8n_source){
-    html += '<div class="detail-section"><div class="detail-section-title">Email Source</div><div style="font-size:13px">';
+    html += '<div class="section-collapsible"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">Email Details</div><div class="section-body">';
+    html += '<div class="detail-section" style="border:none;padding:0"><div style="font-size:13px">';
     if(t.from_email) html += `<div style="margin-bottom:4px"><span class="sensitive">${t.from_email}</span> &rarr; <span class="sensitive">${t.to_email||'N/A'}</span></div>`;
     if(t.email_date) html += `<div style="margin-bottom:4px;color:var(--muted)">Date: ${t.email_date}${t.thread_id?' &middot; Thread: '+t.thread_id:''}</div>`;
     if(t.original_subject) html += `<div style="margin-bottom:4px"><strong>Subject:</strong> ${t.original_subject}</div>`;
     if(t.body_preview) html += `<div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:8px;font-style:italic;color:var(--muted);font-size:13px;line-height:1.5">&ldquo;${t.body_preview}&rdquo;</div>`;
     if(t.has_attachments) html += `<div style="margin-top:8px">Attachments: ${(t.attachment_names||[]).join(', ')||t.attachment_count+' file(s)'}</div>`;
-    html += '</div></div>';
+    html += '</div></div></div></div>';
   }
 
-  // Authority Matrix
-  html += '<div class="detail-section"><div class="detail-section-title">Authority Matrix</div>';
+  // Approval Status — COLLAPSED
+  html += '<div class="section-collapsible"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">Approval Status</div><div class="section-body">';
+  html += '<div class="detail-section" style="border:none;padding:0">';
   const approvals = t.email_approvals||[];
   const required = t.required_approvals||['Sales HOD','Finance Manager'];
   html += '<table class="matrix-table"><thead><tr><th>Required</th><th>Found</th><th>Status</th></tr></thead><tbody>';
@@ -2486,10 +2567,11 @@ function openTicketDetail(ticketId){
     const found = approvals.find(a=>a.role&&a.role.toLowerCase().includes(req.toLowerCase()));
     html += `<tr><td>${req}</td><td class="sensitive">${found?found.name:'&mdash;'}</td><td>${found?'&#10003; Present':'&#10007; Missing'}</td></tr>`;
   });
-  html += '</tbody></table></div>';
+  html += '</tbody></table></div></div></div>';
 
-  // Processing Status
-  html += '<div class="detail-section"><div class="detail-section-title">Processing Status</div>';
+  // Processing Status — COLLAPSED
+  html += '<div class="section-collapsible"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">Processing Status</div><div class="section-body">';
+  html += '<div class="detail-section" style="border:none;padding:0">';
   const trackA = t.prechecks_done?'<span style="color:#16a34a;font-weight:600">&#10003; Done</span>':'<span style="color:#856404;font-weight:600">Pending</span>';
   let trackB = '<span style="color:#856404;font-weight:600">Pending</span>';
   if(t.finance_status==='APPROVED') trackB = '<span style="color:#16a34a;font-weight:600">&#10003; Approved</span>';
@@ -2502,7 +2584,7 @@ function openTicketDetail(ticketId){
   html += `<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
     <div style="background:var(--bg);padding:10px;border-radius:8px"><span style="color:var(--muted);font-size:11px;text-transform:uppercase">Amount Requested</span><br><strong style="font-size:16px">${fmt(t.amount_requested)} MMK</strong></div>
     <div style="background:var(--bg);padding:10px;border-radius:8px"><span style="color:var(--muted);font-size:11px;text-transform:uppercase">Bank Slip Amount</span><br><strong style="font-size:16px">${fmt(t.amount_on_bank_slip||0)} MMK</strong></div>
-  </div></div>`;
+  </div></div></div></div>`;
 
   container.innerHTML = html;
   document.getElementById('ticket-detail-modal').classList.add('open');
