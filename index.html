@@ -1288,6 +1288,43 @@ function handleN8nSubmit(ticketId, eid){
   renderEmails();
 }
 
+// v4.1: Submit from Dashboard modal (reuses handleN8nSubmit logic)
+function submitTicketFromModal(ticketId, modalEid){
+  // Check if user uploaded new data via modal upload zone
+  var employees = pendingEmployeeData[modalEid];
+  if(!employees || !employees.length){
+    // Fall back to pipeline-extracted data
+    var ticket = state.tickets[ticketId];
+    if(ticket && ticket.extracted_employees && ticket.extracted_employees.length > 0){
+      var headers = ['Name','MSISDN','Amount'];
+      var rows = ticket.extracted_employees.map(function(e){return {'Name':e.name||'','MSISDN':e.account_or_phone||e.msisdn||e.phone||'','Amount':e.amount||0};});
+      employees = processEmployeeList(rows, headers);
+    }
+  }
+  if(!employees || !employees.length){
+    showToast('No employee data available. Upload a file first.','error');
+    return;
+  }
+  var invalidCount = employees.filter(function(r){return !r.MSISDN_Valid;}).length;
+  var cleanedCount = employees.filter(function(r){return r.Name_Changed;}).length;
+  var empTotal = employees.reduce(function(s,r){return s+r.Amount;},0);
+  var ticket = state.tickets[ticketId];
+  if(!ticket) return;
+  var recChecks = reconcileAmounts(ticket, employees);
+  var hasMismatch = recChecks.some(function(c){return c.status==='fail';});
+  updateTicket(ticketId, {
+    prechecks_done:true, prechecks_at:nowTs(),
+    employee_data:employees, total_employees:employees.length,
+    invalid_msisdn_count:invalidCount, names_cleaned_count:cleanedCount,
+    employee_file_name:'dashboard-modal', employee_total:empTotal,
+    reconciliation:recChecks, has_mismatch:hasMismatch||ticket.has_mismatch,
+  });
+  logActivity(ticketId+' submitted for Finance from Dashboard');
+  showToast(ticketId+' submitted for Finance Approval','success');
+  document.getElementById('ticket-detail-modal').classList.remove('open');
+  renderDashboard();
+}
+
 // v4: Convert file to base64
 function fileToBase64(file){
   return new Promise(function(resolve){
@@ -2536,6 +2573,40 @@ function openTicketDetail(ticketId){
     } else if(t.amount_on_document){
       html += `<div class="cross-validation-box match" style="margin-bottom:16px"><div><strong>AMOUNT VERIFIED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
     }
+  }
+
+  // Employee List — COLLAPSED but with upload+submit (Vinh: Dashboard should do everything)
+  if(t.n8n_source||t.ai_parsed){
+    const hasEmployees = (t.extracted_employees && t.extracted_employees.length > 0) || (t.employee_data && t.employee_data.length > 0);
+    const empData = t.extracted_employees || t.employee_data || [];
+    const empLabel = hasEmployees ? 'Employee List ('+empData.length+' employees)' : 'Employee List';
+    html += '<div class="section-collapsible'+(hasEmployees?' open':'')+'"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">'+empLabel+'</div><div class="section-body">';
+    if(hasEmployees){
+      // Show extracted employee table
+      const empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
+      if(empConf) html += '<div style="margin-bottom:8px"><span class="badge badge-purple">Auto-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Confidence: '+empConf+'%</span></div>';
+      html += '<div style="max-height:250px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>Phone/Acct</th><th>Amount</th></tr></thead><tbody>';
+      empData.forEach(function(e){
+        const name = e.name || e.Cleaned_Name || e.Original_Name || '';
+        const phone = e.account_or_phone || e.MSISDN || e.phone || '';
+        const amt = e.amount || e.Amount || 0;
+        html += '<tr><td>'+name+'</td><td>'+phone+'</td><td>'+fmt(amt)+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    // Upload zone — always show (user can upload/replace)
+    if(!t.prechecks_done){
+      const modalEid = 'modal-'+t.id;
+      html += '<div style="margin-top:12px"><div class="upload-zone" style="padding:16px" id="emp-zone-'+modalEid+'">';
+      html += '<input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg,.pdf" onchange="handleEmployeeUpload(this,\''+modalEid+'\',\''+t.id+'\')"/>';
+      html += '<div class="upload-icon">&#128196;</div>';
+      html += '<div class="upload-label">Drop or click to upload</div>';
+      html += '<div class="upload-hint">CSV, Excel, or Document (PNG/JPG/PDF)</div>';
+      html += '</div><div id="emp-preview-'+modalEid+'"></div></div>';
+      // Submit button
+      html += '<div style="margin-top:12px"><button class="btn btn-primary" id="submit-btn-'+modalEid+'" onclick="submitTicketFromModal(\''+t.id+'\',\''+modalEid+'\')"'+(hasEmployees?'':' disabled')+'>Save &amp; Submit for Finance</button></div>';
+    }
+    html += '</div></div>';
   }
 
   // AI Analysis — COLLAPSED by default (technical detail, one click away)
