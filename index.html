@@ -2525,9 +2525,18 @@ function renderAIPipelineSection(t){
     </div>`;
     html += '</div>';
     if(t.has_mismatch){
-      var diff = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
-      var pct = t.amount_requested ? ((diff / t.amount_requested) * 100).toFixed(1) : '0';
-      html += `<div class="cross-validation-box mismatch"><div><strong>AMOUNT MISMATCH</strong><br>Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(diff)} MMK (${pct}%) &mdash; Flagged for human review</span></div></div>`;
+      var emailDocDiff2 = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
+      var empTotal2 = t.employee_total_extracted || t.employee_total || 0;
+      var empDiff2 = empTotal2 > 0 ? Math.abs(empTotal2 - (t.amount_requested||0)) : 0;
+      var msg2 = '';
+      if(emailDocDiff2 > 0){
+        msg2 = `Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(emailDocDiff2)} MMK (${(t.amount_requested?((emailDocDiff2/t.amount_requested)*100).toFixed(1):'0')}%)</span>`;
+      } else if(empDiff2 > 0){
+        msg2 = `Employees: ${fmt(empTotal2)} MMK &nbsp;vs&nbsp; Requested: ${fmt(t.amount_requested)} MMK<br><span style="font-size:12px">Gap: ${fmt(empDiff2)} MMK</span>`;
+      } else {
+        msg2 = `Amount discrepancy detected &mdash; see Amount Check for details`;
+      }
+      html += `<div class="cross-validation-box mismatch"><div><strong>AMOUNT MISMATCH</strong><br>${msg2}</div></div>`;
     } else if(t.amount_on_document){
       html += `<div class="cross-validation-box match"><div><strong>AMOUNT VERIFIED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
     }
@@ -2572,9 +2581,19 @@ function openTicketDetail(ticketId){
   // Amount Verification — ALWAYS VISIBLE (core value signal per DeepSeek council)
   if(t.n8n_source||t.ai_parsed){
     if(t.has_mismatch){
-      var diff = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
-      var pct = t.amount_requested ? ((diff / t.amount_requested) * 100).toFixed(1) : '0';
-      html += `<div class="cross-validation-box mismatch" style="margin-bottom:16px"><div><strong>AMOUNT MISMATCH</strong><br>Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(diff)} MMK (${pct}%) &mdash; Flagged for human review</span></div></div>`;
+      var emailDocDiff = Math.abs((t.amount_on_document||0) - (t.amount_requested||0));
+      var empTotal = t.employee_total_extracted || t.employee_total || 0;
+      var empDiff = empTotal > 0 ? Math.abs(empTotal - (t.amount_requested||0)) : 0;
+      var mismatchMsg = '';
+      if(emailDocDiff > 0){
+        var pct = t.amount_requested ? ((emailDocDiff / t.amount_requested) * 100).toFixed(1) : '0';
+        mismatchMsg = `Email: ${fmt(t.amount_requested)} MMK &nbsp;vs&nbsp; Document: ${fmt(t.amount_on_document)} MMK<br><span style="font-size:12px">Difference: ${fmt(emailDocDiff)} MMK (${pct}%) &mdash; Flagged for human review</span>`;
+      } else if(empDiff > 0){
+        mismatchMsg = `Employees: ${fmt(empTotal)} MMK &nbsp;vs&nbsp; Requested: ${fmt(t.amount_requested)} MMK<br><span style="font-size:12px">Gap: ${fmt(empDiff)} MMK &mdash; Flagged for human review</span>`;
+      } else {
+        mismatchMsg = `Amount discrepancy detected &mdash; see Amount Check below for details`;
+      }
+      html += `<div class="cross-validation-box mismatch" style="margin-bottom:16px"><div><strong>AMOUNT MISMATCH</strong><br>${mismatchMsg}</div></div>`;
     } else if(t.amount_on_document){
       html += `<div class="cross-validation-box match" style="margin-bottom:16px"><div><strong>AMOUNT VERIFIED</strong><br>Email amount (${fmt(t.amount_requested)} MMK) matches document (${fmt(t.amount_on_document)} MMK)</div></div>`;
     }
