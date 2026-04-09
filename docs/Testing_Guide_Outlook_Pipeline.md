@@ -36,6 +36,8 @@ Thank you,
 Corporate Sales Team
 ```
 
+**Attach:** None needed (text-only email test)
+
 **Expected result:**
 - Ticket created on dashboard with status NORMAL
 - Both approvers found (Sales HOD + Finance Manager)
@@ -71,7 +73,10 @@ Thank you,
 Corporate Sales Team
 ```
 
-**Attach:** Any payroll image (JPG/PNG) or PDF document
+**Attach one of these sample files:**
+- `research/real_samples/win_handwriting_otc_payroll_4emp.jpg` — Win's real Myanmar handwriting (recommended)
+- `samples/grok_payroll_acme_innovations_3emp_USD.pdf` — PDF payroll test
+- `samples/bank_slip_acme_innovations.png` — Bank slip image
 
 **Expected result:**
 - Vision AI processes the attachment (85%+ confidence)
@@ -102,6 +107,8 @@ Number of Employees: 3
 Thank you,
 Corporate Sales Team
 ```
+
+**Attach:** None needed (tests approval detection without attachment)
 
 **Expected result:**
 - MISSING_APPROVAL scenario (no approvers in email)
