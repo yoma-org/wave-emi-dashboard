@@ -167,7 +167,9 @@
         "subject": "=EMI Pipeline: {{ $json.company }} — {{ $json.scenario }}",
         "bodyContent": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\"><div style=\"background:#001E4E;padding:20px;border-radius:12px 12px 0 0\"><h2 style=\"color:#fff;margin:0\">Wave EMI Pipeline</h2><p style=\"color:#00C2D4;margin:4px 0 0\">AI-Powered Disbursement Processing</p></div><div style=\"background:#f8fafc;padding:24px;border:1px solid #e2e8f0\"><h3 style=\"color:#001E4E;margin-top:0\">New Ticket Created</h3><p><strong>Company:</strong> {{ $json.company }}</p><p><strong>Amount:</strong> {{ $json.amount }} MMK</p><p><strong>Type:</strong> {{ $json.type }}</p><p><strong>Scenario:</strong> {{ $json.scenario }}</p><p><strong>Authority Matrix:</strong> {{ $json.matrix_complete ? 'Complete' : 'Incomplete' }}</p><div style=\"margin-top:24px;text-align:center\"><a href=\"{{ $json.dashboard_url }}\" style=\"display:inline-block;padding:14px 32px;background:#0057B8;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px\">Open Dashboard to Review</a></div></div><div style=\"background:#f1f5f9;padding:12px 24px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:0\"><p style=\"color:#94a3b8;font-size:12px;margin:0\">Parsed by Groq AI | Wave EMI Pipeline v6 (n8n + Outlook)</p></div></div>",
         "bodyContentType": "html",
-        "options": {}
+        "options": {
+          "ccRecipients": "emoney@zeyalabs.ai"
+        }
       },
       "id": "send-notification",
       "name": "Send Outlook Notification",
