@@ -502,3 +502,134 @@ Analysis completed: `docs/Research_PowerAutomate_vs_n8n.md`
 - **Power Automate research:** Completed (not recommended for AI pipeline)
 - **Go-live target:** Wednesday April 15 (MANUAL — forwarded emails, human review)
 - **Next:** DK + Tin coordinate on Vercel Pro + Supabase Pro setup, NextJS scaffold, PostgreSQL schema
+
+---
+
+## Session 6: Pipeline v6 Testing + Debugging (April 9, 1:00 PM - 4:30 PM)
+
+### Pipeline v6 Import + Outlook Setup (1:00 - 1:30 PM)
+
+- Imported v6 JSON into n8n Cloud
+- Set up Outlook OAuth2 for emoney@zeyalabs.ai
+- Tin shared credentials (SMTP app password + login) at 11:23 AM
+- Two Microsoft Outlook OAuth2 credentials on n8n (one Trustify, one Zaya Labs) — consolidated to one
+
+### Test 1: First Outlook Email (1:47 PM — Execution #135)
+
+**Result:** Succeeded (5.388s) but with issues:
+- Outlook Trigger: Correctly picked up email from dknguyen0105vietnam@gmail.com
+- Company: **null** → "Unknown Company"
+- Approvers: **empty** → "None found"
+- **Root cause:** Outlook `bodyPreview` truncated to ~255 chars, cutting off company name + approvers
+- **Secondary issue:** Outlook "EXTERNAL EMAIL" warning prepended to body confused Groq
+
+### Test 2: Internal Email Test (2:34 PM — Execution #136)
+
+**Result:** Succeeded — sent from khanhnguyen@zeyalabs.ai (internal), no EXTERNAL EMAIL warning
+- Company: "Shwe" (still truncated from bodyPreview)
+- All other fields correct
+
+### Bug: Yoma Internal Emails Triggering Pipeline
+
+- emoney@zeyalabs.ai on Yoma distribution list (all_campus@yoma.com.mm)
+- Helpdesk notification (Network Switches Maintenance) triggered pipeline
+- Groq correctly returned `is_disbursement: false` — email dropped (filter works!)
+- But some internal emails crash Prepare node: "json property isn't an object [Item 0]"
+- **Fix:** Added internal domain filter (yoma.com.mm, wavemoney.com.mm) — skips unless subject contains disbursement/payroll/salary
+- **Also asked Vinh** to remove emoney@zeyalabs.ai from internal distribution lists
+
+### Fix 1: Raw Output Mode (Critical — Commit `b94c542`)
+
+- Changed Outlook Trigger Output from "Simplified" to "Raw"
+- Reordered body priority: `body.content > bodyPreview > snippet`
+- **Impact:** Full email body now sent to Groq instead of 255-char truncation
+
+### Fix 2: Outlook Warning Strip (Commit `f2eb087`)
+
+Added 4 regex patterns to Prepare node to strip:
+- "You don't often get email from [sender]."
+- "Learn why this is important"
+- "EXTERNAL EMAIL: This email originated from outside..."
+- "Do not click links or open attachments..."
+
+### Fix 3: Send Outlook Notification Params (Commit `a0a9506`)
+
+Gmail node uses different field names than Outlook node:
+- `sendTo` → `toRecipients`
+- `message` → `bodyContent`
+- `emailType` → `bodyContentType`
+- Added `resource: "message"` and `operation: "send"`
+
+### Fix 4: HTML Email → Plain Text with Emojis (Commit `66ab584` + `4d17c4c`)
+
+n8n Outlook node doesn't support HTML content type natively. Replaced with:
+- Professional plain text email with emoji markers
+- Client-facing tone ("Your disbursement request has been received")
+- Verification status (approval check + amount check)
+- Contextual next steps based on scenario
+- Short dashboard URL (no more 2000+ char base64)
+- Wave Money branding (no tech jargon — removed all AI/Groq/pipeline references)
+
+### Fix 5: Internal Yoma Email Filter (Commit `161fad9`)
+
+Skip emails from yoma.com.mm and wavemoney.com.mm unless subject contains disbursement/payroll/salary keywords.
+
+### Fix 6: CC to Control Mailbox (Commit `5317dc1`)
+
+Added CC field: emoney@zeyalabs.ai gets a copy of every notification.
+
+### Test 3: Full End-to-End with Attachment (3:54 PM — Execution #148)
+
+Sent Kyaw Trading Co. OTC Payroll (245,600 MMK) with Win's handwriting attachment from khanhnguyen@zeyalabs.ai:
+- Company: **Kyaw Trading Co.** ✅
+- Amount: 245,600 MMK ✅
+- Type: SalaryToOTC ✅
+- Scenario: NORMAL ✅
+- Vision: 85% confidence ✅
+- Employee extraction: 4/4 (Ko Zaw Min, Noe Aye, Nyi Ko Ko Maw, Ma Aye Phyu Htet) ✅
+- Mismatch: Detected 94,600 gap (151,000 vs 245,600) ✅
+- Notification: Clean emoji-formatted plain text ✅
+- Dashboard: TKT-006 with all data correct ✅
+
+### Test 4: Clean MA Payroll (4:10 PM — Execution #150)
+
+Sent Shwe Taung Construction MA Payroll (1,200,000 MMK) no attachment:
+- All fields extracted correctly ✅
+- Notification email clean ✅
+- Succeeded in 3.868s ✅
+
+### Remaining Error Executions
+
+Alternating success/error pattern from internal Yoma emails still hitting the pipeline. Non-blocking — only affects system emails, not disbursement requests. Vinh asked to remove emoney from distribution lists.
+
+### Pipeline v6 — Final Feature List (All Commits Batched)
+
+| # | Feature | Commit |
+|---|---------|--------|
+| 1 | Outlook Trigger (emoney@zeyalabs.ai) | Initial v6 |
+| 2 | Raw output mode (full body.content) | `b94c542` |
+| 3 | Outlook data format support (from.emailAddress, toRecipients, etc.) | Initial v6 |
+| 4 | body.content prioritized over bodyPreview | `b94c542` |
+| 5 | Outlook EXTERNAL EMAIL warning strip | `f2eb087` |
+| 6 | Internal Yoma email filter (domain + keyword) | `161fad9` |
+| 7 | Send Outlook Notification (correct params) | `a0a9506` |
+| 8 | Plain text email with emojis (client-facing) | `4d17c4c` |
+| 9 | Short dashboard URL | `4d17c4c` |
+| 10 | CC to emoney@zeyalabs.ai | `5317dc1` |
+| 11 | Loop guard for notification emails | Initial v6 |
+| 12 | v6 version comments on all Code nodes | Initial v6 |
+
+---
+
+## Final Status (April 9, 4:30 PM)
+
+- **Dashboard:** Deployed on Vercel — "Asked Client" status, confidence badges, mismatch fix, all working
+- **Pipeline v6:** Fully tested, Outlook-based, all 12 features batched
+- **Control mailbox:** emoney@zeyalabs.ai active, Outlook OAuth2 connected
+- **Notification email:** Professional, client-facing, emoji-formatted, short URL
+- **Infrastructure doc:** Completed (AWS recommended, Yoma Bank alignment)
+- **Meeting analysis:** Apr 9 standup analyzed (go-live Wed Apr 15, manual first)
+- **Research:** Infrastructure (4 platforms), Power Automate vs n8n
+- **Tracy intel:** Rita prefers AWS by familiarity, Huy owns infra, can call Gemini externally
+- **n8n trial:** 8 days remaining, Minh suggests new account
+- **Next priority:** Vercel Pro + Supabase Pro setup → NextJS + PostgreSQL (KAN-26)
