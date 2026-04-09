@@ -122,7 +122,7 @@ Corporate Sales Team
 | Check | Where to Look |
 |-------|--------------|
 | Pipeline executed | n8n Cloud → Executions tab → should show "Succeeded" |
-| Ticket created | https://wave-emi-dashboard.vercel.app → Dashboard tab |
+| Ticket created | https://project-ii0tm.vercel.app → Dashboard tab |
 | Company name correct | Ticket modal → AI Analysis → Company field |
 | Approvers found | Ticket modal → Approval Status section |
 | Amount correct | Ticket modal → Amount Requested |
@@ -134,7 +134,7 @@ Corporate Sales Team
 
 ## Dashboard URL
 
-**https://wave-emi-dashboard.vercel.app**
+**https://project-ii0tm.vercel.app**
 
 To reset dashboard data: Press **Ctrl+Shift+R**
 
