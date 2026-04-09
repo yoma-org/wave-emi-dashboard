@@ -1,10 +1,27 @@
 # Backend + Database Plan (KAN-26)
 
-**Date:** April 9, 2026
+**Date:** April 9, 2026 (Updated: Apr 9 evening)
 **Jira:** KAN-26 — [eMoney] Add Backend and DB
-**Assigned:** DK + Tin
 **Go-live:** Wednesday April 15 (board meeting April 16)
-**Interim stack:** Vercel Pro + Supabase Pro (Zaya Labs account)
+**Interim stack:** Vercel Pro + Supabase Pro (Zaya Labs account, Tin's org)
+
+### Team
+
+| Person | Role | Status |
+|--------|------|--------|
+| **DK** | DB integration + pipeline | Active — executing DB plan tonight |
+| **Binh Le Quang** | Backend support + NextJS review | Onboarding — reading codebase guide |
+| **Tin** | Supabase Pro admin + infra | On call — owns Supabase project |
+| **Huy** | Infrastructure guide | Supporting Tin on infra decisions |
+| **Dong** | Frontend (NextJS React) | Out of office — joins later |
+
+### Detailed Plans (Split for Parallel Execution)
+
+| Document | Purpose | Who |
+|----------|---------|-----|
+| **`Plan_DB_Implementation.md`** | Step-by-step DB execution plan (tonight) | DK |
+| **`Guide_Codebase_Onboarding_Binh.md`** | Business flow + code architecture + migration vision | Binh |
+| **This file** | Master plan + long-term roadmap | Everyone |
 
 ---
 
@@ -12,8 +29,9 @@
 
 The current dashboard (index.html, 2,700 lines) works. Rita said "basically done." Rewriting to NextJS in 4 days with Dong out of office is too risky.
 
-**Short-term (Apr 9-15):** Keep index.html + add Supabase underneath
-**Long-term (Apr 16+):** NextJS migration with Dong, proper API routes, AWS infra
+**Short-term (Apr 9-15):** DK wires Supabase into index.html. Binh studies codebase + reviews migration plan.
+**Mid-term (Apr 16-18):** DK + Binh plan NextJS migration together. Dong joins for frontend.
+**Long-term (Apr 21+):** NextJS app on AWS infra (Huy + Tin set up).
 
 ---
 
