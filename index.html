@@ -6,6 +6,7 @@
 <title>Wave EMI Pipeline — Intake & Approval Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -459,6 +460,14 @@ const LS_ACTIVITY = 'emi_activity';
 const LS_PARSED = 'emi_parsed';
 const LS_ROLE = 'emi_role';
 
+// ─── SUPABASE CLIENT ────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://dicluyfkfqlqjwqikznl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpY2x1eWZrZnFscWp3cWlrem5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjE5MTgsImV4cCI6MjA5MTI5NzkxOH0.VH5j874FY3_IuQcdWq3BaQUc4dSkJ-GHNhcwwsUkOxQ';
+let sb = null;
+try {
+  if(window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch(e) { console.warn('Supabase not available, using localStorage only'); }
+
 // ─── MOCK EMAIL DATA ──────────────────────────────────────────────────────────
 const MOCK_EMAILS = [
   {
@@ -643,7 +652,6 @@ function checkAuthorityMatrix(ticket){
 
 function saveState(){
   try{
-    // Don't persist bank_slip_bytes (it's runtime only via slipDataUrls)
     const ticketsClean = {};
     for(const [k,t] of Object.entries(state.tickets)){
       const copy = {...t};
@@ -655,14 +663,44 @@ function saveState(){
     localStorage.setItem(LS_PARSED, JSON.stringify([...state.parsedEmails]));
     localStorage.setItem(LS_ROLE, state.currentRole);
   } catch(e){ /* non-blocking */ }
+  // Supabase dual-write (non-blocking)
+  if(sb){
+    for(const [k,t] of Object.entries(state.tickets)){
+      const copy = {...t};
+      delete copy.bank_slip_dataurl;
+      sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
+        if(error) console.warn('Supabase sync:', error.message);
+      });
+    }
+  }
 }
 
-function loadState(){
+async function loadState(){
+  // Try Supabase first
+  if(sb){
+    try{
+      const {data, error} = await sb.from('tickets').select('*').order('created_at',{ascending:false});
+      if(!error && data && data.length > 0){
+        state.tickets = {};
+        data.forEach(t => { state.tickets[t.id] = t; });
+        console.log('Loaded', data.length, 'tickets from Supabase');
+      }
+      const {data:logs, error:logErr} = await sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(50);
+      if(!logErr && logs && logs.length > 0){
+        state.activityLog = logs.map(l => ({time: new Date(l.created_at).toLocaleTimeString('en-US',{hour12:false}), message: l.message}));
+      }
+    } catch(e){ console.warn('Supabase load failed, using localStorage'); }
+  }
+  // Fallback to localStorage
   try{
-    const t = localStorage.getItem(LS_TICKETS);
-    if(t) state.tickets = JSON.parse(t);
-    const a = localStorage.getItem(LS_ACTIVITY);
-    if(a) state.activityLog = JSON.parse(a);
+    if(Object.keys(state.tickets).length === 0){
+      const t = localStorage.getItem(LS_TICKETS);
+      if(t) state.tickets = JSON.parse(t);
+    }
+    if(state.activityLog.length === 0){
+      const a = localStorage.getItem(LS_ACTIVITY);
+      if(a) state.activityLog = JSON.parse(a);
+    }
     const p = localStorage.getItem(LS_PARSED);
     if(p) state.parsedEmails = new Set(JSON.parse(p));
     const r = localStorage.getItem(LS_ROLE);
@@ -674,13 +712,23 @@ function logActivity(msg){
   const now = new Date();
   const time = [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
   state.activityLog.unshift({time, message:msg});
-  if(state.activityLog.length > 20) state.activityLog.length = 20;
+  if(state.activityLog.length > 50) state.activityLog.length = 50;
   saveState();
+  if(sb){
+    const ticketMatch = msg.match(/TKT-\d+/);
+    sb.from('activity_log').insert({
+      ticket_id: ticketMatch ? ticketMatch[0] : null,
+      action: msg.includes('created')?'CREATE':msg.includes('approved')?'APPROVE':msg.includes('rejected')?'REJECT':'UPDATE',
+      message: msg
+    }).then(({error})=>{ if(error) console.warn('Supabase log:', error.message); });
+  }
 }
 
 function generateTicketId(){
   const existing = Object.keys(state.tickets).filter(k=>k.startsWith('TKT-'));
-  return 'TKT-'+String(existing.length+1).padStart(3,'0');
+  const nums = existing.map(k => parseInt(k.replace('TKT-','')) || 0);
+  const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+  return 'TKT-'+String(maxNum+1).padStart(3,'0');
 }
 
 function updateTicket(id, updates){
@@ -690,6 +738,13 @@ function updateTicket(id, updates){
   t.risk_level = computeRisk(t);
   state.tickets[id] = t;
   saveState();
+  if(sb){
+    const copy = {...t};
+    delete copy.bank_slip_dataurl;
+    sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
+      if(error) console.warn('Supabase update:', error.message);
+    });
+  }
 }
 
 function resetDemo(){
@@ -756,8 +811,8 @@ function seedDemoTickets(){
   logActivity('Demo tickets seeded (Capital Taiyo + GGI Nippon)');
 }
 
-function initState(){
-  loadState();
+async function initState(){
+  await loadState();
   if(!state.parsedEmails) state.parsedEmails = new Set();
   if(Object.keys(state.tickets).length === 0) seedDemoTickets();
   document.getElementById('role-select').value = state.currentRole;
@@ -2734,9 +2789,10 @@ document.addEventListener('keydown', function(e){
 });
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-initState();
-checkN8nWebhook();
-renderDashboard();
+initState().then(() => {
+  checkN8nWebhook();
+  renderDashboard();
+});
 
 // Drag-and-drop visual feedback for upload zones
 document.addEventListener('dragover', function(e){
