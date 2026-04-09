@@ -632,4 +632,91 @@ Alternating success/error pattern from internal Yoma emails still hitting the pi
 - **Research:** Infrastructure (4 platforms), Power Automate vs n8n
 - **Tracy intel:** Rita prefers AWS by familiarity, Huy owns infra, can call Gemini externally
 - **n8n trial:** 8 days remaining, Minh suggests new account
-- **Next priority:** Vercel Pro + Supabase Pro setup → NextJS + PostgreSQL (KAN-26)
+
+---
+
+## Session 7: Vercel Pro + Supabase + KAN-26 Planning (April 9, 4:30 PM - 6:00 PM)
+
+### KAN-26 Backend + DB Planning
+
+Three documents created for parallel execution:
+
+1. **`Plan_DB_Implementation.md`** — DK's execution plan for tonight
+   - Full SQL schema (2 tables: tickets ~70 fields, activity_log 5 fields)
+   - 6 functions to modify in index.html (saveState, loadState, updateTicket, logActivity, generateTicketId)
+   - Dual-write strategy (localStorage + Supabase — zero risk)
+   - Updated webhook.js with server-side Supabase write
+   - Short URL handler (?ticket=TKT-006)
+   - Test checklist (8 tests)
+
+2. **`Guide_Codebase_Onboarding_Binh.md`** — For Binh Le Quang (backend support)
+   - Business flow explained (7 steps, 3 roles)
+   - Architecture diagram (email → pipeline → dashboard)
+   - Code structure map (line-by-line guide to 2,700 lines)
+   - NextJS migration vision (proposed structure, page mapping)
+   - 5 thinking questions for Binh
+
+3. **Updated `Plan_Backend_DB_KAN26.md`** — Master plan with team assignments
+   - Binh added to team (backend support, reviewing codebase)
+   - Short-term: Supabase into index.html (DK)
+   - Mid-term: NextJS migration with Binh + Dong
+   - Long-term: AWS infra with Huy + Tin
+
+### New Team Member: Binh Le Quang
+
+- Backend developer at Trustify (born '88, senior to DK)
+- DK asked him to support backend — agreed
+- Shared: GitHub repo, workflow diagram, testing guide, onboarding guide, KAN-26 plan
+- Binh's job today: understand the codebase, not build yet
+- Never worked with NextJS — needs time to learn
+
+### Vercel Pro Deployment
+
+**Challenges:**
+1. yoma-org GitHub seats full (10/10) — couldn't add DKNguyenTrustify as org member
+2. Added DKNguyenTrustify as repo collaborator instead — still denied push
+3. Used Vinh's Personal Access Token (ghp_...) to force push latest code to yoma-org/wave-emi-dashboard
+4. Connected yoma-org/wave-emi-dashboard to Vercel Pro (vinh-nq1801's projects)
+5. Deployed successfully
+
+**Result:**
+- Vercel Pro URL: `https://project-ii0tm.vercel.app/`
+- Team: vinh-nq1801's projects (Pro)
+- Repo: yoma-org/wave-emi-dashboard
+- Env vars set: SUPABASE_URL + SUPABASE_SERVICE_KEY
+- Auto-deploys from main branch
+- Dashboard confirmed working (WebFetch verified)
+
+**Both repos now synced:**
+- `origin` → DKNguyenTrustify/Wave-eMoney (personal)
+- `yoma` → yoma-org/wave-emi-dashboard (team)
+- Must push to both: `git push origin main && git push yoma main`
+
+### Supabase Pro Setup
+
+- Project created under Tin's org (tindangtt)
+- Project ref: dicluyfkfqlqjwqikznl
+- Region: Southeast Asia (Singapore)
+- Anon key obtained
+- Service role key set in Vercel env vars
+- **Tables NOT YET CREATED** — next step
+
+---
+
+## Final Status (April 9, 6:00 PM)
+
+- **Vercel Pro:** LIVE at `project-ii0tm.vercel.app` (confirmed working)
+- **Vercel Hobby:** Still live at `wave-emi-dashboard.vercel.app` (legacy)
+- **Supabase Pro:** Project created, env vars set, tables pending
+- **Pipeline v6:** Working on n8n Cloud (Outlook trigger)
+- **GitHub repos:** Both synced (DKNguyenTrustify + yoma-org)
+- **Binh onboarded:** Received repo + guide + plan docs
+- **Vinh notified:** Testing guide + sample files shared
+- **All docs created:** DB plan, Binh guide, KAN-26 master plan, infrastructure doc, meeting analysis
+
+### What's Next (Tonight / Tomorrow)
+1. **Create Supabase tables** — run SQL schema in SQL Editor
+2. **Wire Supabase into index.html** — 6 function changes
+3. **Test dual-write** — localStorage + Supabase working together
+4. **Update webhook.js** — server-side Supabase write
+5. **Push to both repos** — auto-deploys to Vercel Pro
