@@ -403,3 +403,102 @@ Win Win Naing shared her own handwritten Myanmar payslip via Teams. This is the 
 - **Meeting analyses:** DONE (standup + demo transcripts)
 - **Key pivot:** Infrastructure > LLM (Rita's directive)
 - **Next priority:** Infrastructure Recommendation doc (Rita's #1 ask)
+
+---
+
+## Session 5: Morning Sprint + Meeting + Pipeline v6 (April 9, 8:45 AM - 12:30 PM)
+
+### Pre-Meeting Sprint (8:45 - 9:45 AM)
+
+**Minh's question (8:03 AM Teams):** "Trong trường hợp confidence dưới 90% thì sao?"
+
+**Implemented (4 changes to index.html, commit `8c40a4d`):**
+1. **"Asked Client" mismatch status** — new status in `deriveStatus()` for mismatch tickets where `has_mismatch && scenario === 'AMOUNT_MISMATCH' && !prechecks_done`. Amber badge, audit preservation note.
+2. **Confidence tiered badges** — green (>=90%), amber (70-89%), red (<70%) across table, card, and modal views
+3. **Confidence warning box** — appears in modal when confidence < 90%: "Moderate AI Confidence (85%) — Please verify extracted data before submitting"
+4. **Mismatch banner fix** (commit `e6f7abd`) — banner was showing "Difference: 0 MMK" when email-vs-document matched but employee total didn't. Now correctly shows "Employees: 151,000 vs Requested: 245,600 — Gap: 94,600 MMK"
+
+**Also committed:** Workflow diagrams, Win's handwriting sample, renamed test PDFs, morning sprint plan, updated README.
+
+### Tracy Intelligence (9:38-9:46 AM, Teams DM)
+
+Key intel from Tracy Nguyen before meeting:
+- **"Rita chỉ biết mỗi AWS nên Rita prefer nó"** — Rita only knows AWS, that's why she prefers it
+- **"cho dù aws ko support gemini thì gọi qua gemini cũng được"** — can call Gemini externally even on AWS
+- **"cơ bản 3 thằng cũng ngang ngửa nhau"** — the big 3 cloud providers are roughly equal
+- **"chứ mình làm Vercel thấy bả ko thích"** — Rita doesn't like Vercel
+- New person identified: **Huy** — infrastructure/DevOps specialist at Trustify
+
+### Daily Standup (10:00 - 10:20 AM)
+
+Full analysis: `docs/Meeting_Analysis_2026-04-09_DailyStandup.md`
+
+**Critical decisions:**
+1. **Go-live target: Wednesday April 15** (board meeting Thursday April 16)
+2. **Go-live = MANUAL** — forwarded emails, not automated pipeline. "No reading of an email. It's just something that we're forwarding." (Rita, 06:43)
+3. **Myanmar handwriting OCR is NOT a go-live blocker** (Rita, 02:24)
+4. **Only 3 features needed:** batch/unbatch, audit confirmation form, finance exemption list
+5. **Infrastructure choice = LLM choice:** "Once we pick our infrastructure, you don't get to pick whatever LLM" (Rita, 18:27)
+6. **Two paths remain:** Google Cloud (keep Gemini) OR AWS Bedrock (use Claude)
+7. **Rita has AWS contacts:** Vo (AWS Financial), Victoria (AWS for Yoma), Hung (SA team HCM)
+8. **Gemma rejected by Tin:** "not good for document or OCR" (Tin, 15:29)
+9. **Rita's new model:** "Product Builder (Rita + AI) + Hardening Engineers (Trustify)" for Star City Living App
+
+### Post-Meeting Assignments (10:27 - 10:59 AM, Teams)
+
+**Vinh's directives:**
+- **DK + Tin:** implement backend and DB for eMoney app (NextJS + PostgreSQL)
+- **Interim plan:** Vercel Pro + Supabase Pro on Zaya Labs, migrate to AWS later
+- **Vinh + Win:** setup control mailbox emoney@zeyalabs.ai
+- **Mailbox ready at 10:42 AM** — "ko xài gmail nữa" (no more Gmail)
+- **Vinh shared KAN-26 Jira link** at 10:59 AM
+- **Dong out of office** — DK + Tin are it
+
+### Infrastructure Research (10:30 AM - 12:00 PM)
+
+Comprehensive 4-platform comparison completed: `docs/Infrastructure_Recommendation.md`
+
+| Platform | Recommendation | Monthly Cost |
+|---|---|---|
+| AWS | **Primary** (Yoma Bank alignment, Rita preference) | $75-95 |
+| GCP | Strong alternative for AI (Gemini proven for Myanmar) | $45-85 |
+| Azure | Viable but no advantage | $35-95 |
+| Alibaba | Not recommended (geopolitical risk for UK entity) | $65-130 |
+
+**Key finding:** Yoma Bank confirmed migrating to AWS (via Renova Cloud). "We run on the same cloud as your bank" is the strongest compliance argument.
+
+### Pipeline v6 — Outlook Migration (11:00 AM - 12:30 PM)
+
+**Tin shared credentials** for emoney@zeyalabs.ai at 11:23 AM:
+- SMTP app password for email access
+- Login password for Microsoft account
+- DK set up Outlook OAuth2 on n8n Cloud successfully
+
+**v6 pipeline created** (`pipelines/n8n-workflow-v6.json`):
+- Cloned from v5.1 — all features preserved
+- Gmail Trigger → **Outlook Trigger** (`microsoftOutlookTrigger`)
+- Send Gmail Notification → **Send Outlook Notification** (`microsoftOutlook`)
+- Prepare for AI code updated to handle both Gmail AND Outlook data formats (bodyPreview, from.emailAddress, toRecipients, ccRecipients, receivedDateTime, conversationId, hasAttachments)
+- Notification recipient: emoney@zeyalabs.ai (was khanhnguyen@zeyalabs.ai)
+- Backward compatible — still handles Gmail format as fallback
+
+**n8n Cloud trial:** 8 days remaining (~April 17). Minh suggests new account for another 14 days. Long-term: self-hosted on AWS.
+
+### Power Automate Research (Minh's suggestion)
+
+Analysis completed: `docs/Research_PowerAutomate_vs_n8n.md`
+
+**Verdict: Stay on n8n for AI pipeline.** Power Automate has no inline code execution — fatal for our 3 heavy Code nodes (450+ lines JS). Consider Power Automate for future Microsoft-integration tasks (SharePoint reporting, Teams notifications).
+
+---
+
+## Final Status (April 9, 12:30 PM)
+
+- **Dashboard:** Deployed on Vercel with "Asked Client" status + confidence tiered badges + mismatch fix
+- **Pipeline:** v6 created (Outlook), v5.1 as fallback, v3 untouched
+- **Outlook OAuth2:** Connected on n8n Cloud (emoney@zeyalabs.ai)
+- **Infrastructure doc:** Completed (4-platform comparison with pricing)
+- **Meeting analysis:** Completed (Apr 9 standup)
+- **Power Automate research:** Completed (not recommended for AI pipeline)
+- **Go-live target:** Wednesday April 15 (MANUAL — forwarded emails, human review)
+- **Next:** DK + Tin coordinate on Vercel Pro + Supabase Pro setup, NextJS scaffold, PostgreSQL schema
