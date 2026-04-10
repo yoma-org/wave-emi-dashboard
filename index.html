@@ -2534,6 +2534,9 @@ function createTicketFromN8n(data){
     employee_extraction_status:data.employee_extraction_status||'none',
     employee_total_extracted:data.employee_total_extracted||0,
     employee_amount_mismatch:data.employee_amount_mismatch||false,
+    // v6: Attachment from Supabase Storage
+    attachment_url:data.attachment_url||'',
+    attachment_mime_type:data.attachment_mime_type||'',
   };
   state.tickets[tid].status = deriveStatus(state.tickets[tid]);
   state.tickets[tid].risk_level = computeRisk(state.tickets[tid]);
@@ -2661,6 +2664,22 @@ function openTicketDetail(ticketId){
     html += `<div style="background:${isLow?'#fee2e2':'#fef3c7'};border:1px solid ${isLow?'#fca5a5':'#fde68a'};border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px">
       <strong style="color:${isLow?'#dc2626':'#92400e'}">${isLow?'Low':'Moderate'} AI Confidence (${confPct}%)</strong>
       <div style="margin-top:4px;color:${isLow?'#991b1b':'#78350f'}">${isLow?'Recommend uploading employee list manually to ensure accuracy.':'Please verify extracted employee data before submitting.'}</div>
+    </div>`;
+  }
+
+  // Original Attachment Preview (from Supabase Storage)
+  if(t.attachment_url){
+    const isPdf = (t.attachment_mime_type||'').includes('pdf');
+    html += `<div style="background:#f0f4fa;border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+      <div style="cursor:pointer;font-weight:700;color:var(--navy);font-size:14px" onclick="var body=this.nextElementSibling;body.style.display=body.style.display==='none'?'block':'none'">
+        \uD83D\uDCCE Original Attachment <span style="font-weight:400;color:var(--muted);font-size:12px">(click to ${isPdf?'view link':'expand'})</span>
+      </div>
+      <div style="margin-top:10px;display:none">
+        ${isPdf
+          ? '<a href="'+t.attachment_url+'" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600">\uD83D\uDCC4 Open PDF attachment in new tab</a>'
+          : '<img src="'+t.attachment_url+'" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-top:4px" alt="Original attachment" loading="lazy"/>'
+        }
+      </div>
     </div>`;
   }
 

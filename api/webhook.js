@@ -91,7 +91,41 @@ export default async function handler(req, res) {
     employee_extraction_status: data.employee_extraction_status || 'none',
     employee_total_extracted: data.employee_total_extracted || 0,
     employee_amount_mismatch: data.employee_amount_mismatch || false,
+    attachment_url: null,
+    attachment_mime_type: data.attachment_mime_type || null,
   };
+
+  // Upload attachment to Supabase Storage (if present)
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY && data.attachment_base64) {
+    try {
+      const base64Data = data.attachment_base64;
+      if (base64Data.length < 5 * 1024 * 1024) {
+        const buffer = Buffer.from(base64Data, 'base64');
+        const mime = data.attachment_mime_type || 'image/jpeg';
+        const ext = mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg';
+        const filePath = `${ticketId}/attachment.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, buffer, {
+            contentType: mime,
+            upsert: true
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('attachments')
+            .getPublicUrl(filePath);
+          ticket.attachment_url = urlData.publicUrl;
+        } else {
+          console.error('Storage upload error:', uploadError.message);
+        }
+      }
+    } catch (e) {
+      console.error('Attachment upload failed:', e.message);
+      // Non-blocking — ticket saves without attachment
+    }
+  }
 
   // Persist to Supabase
   let supabaseOk = false;
