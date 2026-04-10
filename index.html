@@ -839,6 +839,36 @@ function fmtTime(ts){
 function allTickets(){ return Object.values(state.tickets); }
 function countByStatus(s){ return allTickets().filter(t=>t.status===s).length; }
 
+// ─── SORTABLE TABLE ─────────────────────────────────────────────────────────
+let sortColumn = 'created_at';
+let sortDirection = 'desc';
+
+function sortTickets(tickets, col, dir){
+  return tickets.sort((a,b)=>{
+    let vA, vB;
+    if(col==='id'){ vA=parseInt(a.id.replace('TKT-',''))||0; vB=parseInt(b.id.replace('TKT-',''))||0; }
+    else if(col==='created_at'){ vA=new Date(a.created_at||0); vB=new Date(b.created_at||0); }
+    else if(col==='amount_requested'){ vA=a.amount_requested||0; vB=b.amount_requested||0; }
+    else if(col==='risk_level'){ const ro={HIGH:3,MEDIUM:2,LOW:1}; vA=ro[a.risk_level]||0; vB=ro[b.risk_level]||0; }
+    else { vA=(a[col]||'').toString().toLowerCase(); vB=(b[col]||'').toString().toLowerCase(); }
+    if(vA<vB) return dir==='asc'?-1:1;
+    if(vA>vB) return dir==='asc'?1:-1;
+    return 0;
+  });
+}
+
+function sortHeader(label, col){
+  const arrow = sortColumn===col?(sortDirection==='desc'?' \u25BC':' \u25B2'):'';
+  const active = sortColumn===col?'color:var(--blue);':'';
+  return `<th style="${active}cursor:pointer;user-select:none" onclick="toggleSort('${col}')">${label}${arrow}</th>`;
+}
+
+function toggleSort(col){
+  if(sortColumn===col) sortDirection = sortDirection==='desc'?'asc':'desc';
+  else { sortColumn=col; sortDirection='desc'; }
+  renderDashboard();
+}
+
 function statusBadgeHtml(s){
   const map = {ASKED_CLIENT:'badge-warn',AWAITING_EMPLOYEE_LIST:'badge-awaiting',PENDING_FINANCE:'badge-pending',READY_FOR_CHECKER:'badge-ready',REJECTED:'badge-rejected',SENT_TO_CHECKER:'badge-sent',PREPARING_FILES:'badge-pending',WITH_CHECKER:'badge-awaiting',GROUP_MAPPING:'badge-pending',DISBURSING:'badge-ready',CLOSING:'badge-ready',COMPLETED:'badge-sent'};
   const labels = {ASKED_CLIENT:'Asked Client',AWAITING_EMPLOYEE_LIST:'Awaiting Emp. List',PENDING_FINANCE:'Pending Finance',READY_FOR_CHECKER:'Ready for Checker',REJECTED:'Rejected',SENT_TO_CHECKER:'Sent to Checker',PREPARING_FILES:'Preparing Files',WITH_CHECKER:'With Checker',GROUP_MAPPING:'Group Mapping',DISBURSING:'Disbursing',CLOSING:'Closing',COMPLETED:'Completed'};
@@ -1013,7 +1043,7 @@ function cycleRole(){
 
 function renderDashboard(){
   const el = document.getElementById('page-dashboard');
-  const tickets = allTickets().sort((a,b)=> new Date(b.created_at||0) - new Date(a.created_at||0));
+  const tickets = sortTickets(allTickets(), sortColumn, sortDirection);
   const newEmails = MOCK_EMAILS.length - state.parsedEmails.size;
   const pending = countByStatus('PENDING_FINANCE') + countByStatus('AWAITING_EMPLOYEE_LIST');
   const ready = countByStatus('READY_FOR_CHECKER');
@@ -1041,8 +1071,8 @@ function renderDashboard(){
   } else {
     html += `<div class="card"><div class="card-header"><div class="card-title">All Tickets</div></div>
       <div class="table-scroll"><table class="ticket-table"><thead><tr>
-        <th>ID</th><th>Created</th><th>Company</th><th>Type</th><th>Amount</th>
-        <th>Vision</th><th>Track A (Pre-checks)</th><th>Track B (Finance)</th><th>Status</th><th>Risk</th>
+        ${sortHeader('ID','id')}${sortHeader('Created','created_at')}${sortHeader('Company','company')}<th>Type</th>${sortHeader('Amount','amount_requested')}
+        <th>Vision</th><th>Track A</th><th>Track B</th>${sortHeader('Status','status')}${sortHeader('Risk','risk_level')}
       </tr></thead><tbody>`;
     tickets.forEach(t => {
       const trackA = t.prechecks_done ? '<span style="color:#16a34a;font-weight:600">\u2705 Done</span>' : '<span style="color:#856404;font-weight:600">\u23F3 Pending</span>';
