@@ -19,21 +19,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required field: company' });
   }
 
-  // Generate ticket ID (query Supabase for max)
-  // Generate ticket ID — find highest NUMBER across all tickets
-  let ticketId = 'TKT-001';
-  try {
-    const { data: allIds } = await supabase
-      .from('tickets')
-      .select('id');
-    if (allIds && allIds.length > 0) {
-      const nums = allIds.map(t => parseInt(t.id.replace('TKT-', '')) || 0);
-      const maxNum = Math.max(...nums);
-      ticketId = 'TKT-' + String(maxNum + 1).padStart(3, '0');
-    }
-  } catch (e) { /* fallback to TKT-001 */ }
-
-  // Determine scenario
+  // === STEP 1: Build core ticket + insert into tickets_v2 ===
   const approvals = data.approvals || [];
   const required = data.required_approvals || ['Sales HOD', 'Finance Manager'];
   const matrixComplete = required.every(req =>
@@ -44,78 +30,111 @@ export default async function handler(req, res) {
   if (mismatch) scenario = 'AMOUNT_MISMATCH';
   else if (!matrixComplete) scenario = 'MISSING_APPROVAL';
 
-  // Build ticket object
-  const ticket = {
-    id: ticketId,
-    source_email_id: 'N8N-' + Date.now(),
-    company: data.company || 'Unknown Company',
-    type: data.type || 'SalaryToMA',
-    currency: data.currency || 'MMK',
-    scenario: scenario,
-    amount_requested: data.amount_requested || data.amount || 0,
-    amount_on_bank_slip: data.amount_on_bank_slip || data.amount_requested || data.amount || 0,
-    amount_on_document: data.amount_on_document || 0,
-    has_mismatch: mismatch,
-    approval_matrix_complete: matrixComplete,
-    required_approvals: required,
-    email_approvals: approvals,
-    status: mismatch ? 'ASKED_CLIENT' : 'AWAITING_EMPLOYEE_LIST',
-    risk_level: mismatch || !matrixComplete ? 'HIGH' : 'LOW',
-    n8n_source: true,
-    n8n_parsed_at: data.parsed_at || new Date().toISOString(),
-    from_email: data.from_email || '',
-    to_email: data.to_email || '',
-    cc_emails: data.cc_emails || '',
-    reply_to: data.reply_to || '',
-    email_date: data.email_date || null,
-    message_id: data.message_id || '',
-    thread_id: data.thread_id || '',
-    original_subject: data.original_subject || '',
-    body_preview: data.body_preview || '',
-    email_body_full: data.email_body_full || '',
-    has_attachments: data.has_attachments || false,
-    attachment_names: data.attachment_names || [],
-    attachment_count: data.attachment_count || 0,
-    vision_parsed: data.vision_parsed || false,
-    vision_confidence: data.vision_confidence || 0,
-    vision_status: data.vision_status || 'none',
-    document_type: data.document_type || '',
-    document_signers: data.document_signers || [],
-    depositor_name: data.depositor_name || '',
-    remark: data.remark || '',
-    transaction_id: data.transaction_id || '',
-    extracted_employees: data.extracted_employees || [],
-    extracted_employee_count: data.extracted_employee_count || 0,
-    employee_extraction_confidence: data.employee_extraction_confidence || 0,
-    employee_extraction_status: data.employee_extraction_status || 'none',
-    employee_total_extracted: data.employee_total_extracted || 0,
-    employee_amount_mismatch: data.employee_amount_mismatch || false,
-    attachment_url: null,
-    attachment_mime_type: data.attachment_mime_type || null,
-  };
+  let ticketId = null;    // UUID from DB
+  let ticketNumber = null; // TKT-xxx from DB trigger
 
-  // Upload attachment to Supabase Storage (if present)
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY && data.attachment_base64) {
+  try {
+    const { data: newTicket, error: ticketErr } = await supabase
+      .from('tickets_v2')
+      .insert({
+        company: data.company || 'Unknown Company',
+        type: data.type || 'SalaryToMA',
+        currency: data.currency || 'MMK',
+        scenario: scenario,
+        status: mismatch ? 'ASKED_CLIENT' : 'AWAITING_EMPLOYEE_LIST',
+        risk_level: mismatch || !matrixComplete ? 'HIGH' : 'LOW',
+        amount_requested: data.amount_requested || data.amount || 0,
+        amount_on_bank_slip: data.amount_on_bank_slip || data.amount_requested || data.amount || 0,
+        amount_on_document: data.amount_on_document || 0,
+        has_mismatch: mismatch,
+        approval_matrix_complete: matrixComplete,
+        required_approvals: required,
+        email_approvals: approvals,
+        finance_status: 'PENDING',
+        remark: data.remark || '',
+        transaction_id: data.transaction_id || '',
+        depositor_name: data.depositor_name || '',
+        n8n_source: true,
+      })
+      .select('id, ticket_number')
+      .single();
+
+    if (ticketErr) {
+      console.error('tickets_v2 insert error:', ticketErr.message);
+      return res.status(500).json({ error: 'Failed to create ticket', detail: ticketErr.message });
+    }
+
+    ticketId = newTicket.id;
+    ticketNumber = newTicket.ticket_number;
+  } catch (e) {
+    console.error('tickets_v2 insert exception:', e.message);
+    return res.status(500).json({ error: 'Failed to create ticket', detail: e.message });
+  }
+
+  // === STEP 2: Insert email metadata into ticket_emails ===
+  try {
+    await supabase.from('ticket_emails').insert({
+      ticket_id: ticketId,
+      source_email_id: 'N8N-' + Date.now(),
+      from_email: data.from_email || '',
+      to_email: data.to_email || '',
+      cc_emails: data.cc_emails || '',
+      reply_to: data.reply_to || '',
+      email_date: data.email_date || null,
+      message_id: data.message_id || '',
+      thread_id: data.thread_id || '',
+      original_subject: data.original_subject || '',
+      body_preview: data.body_preview || '',
+      email_body_full: data.email_body_full || '',
+      has_attachments: data.has_attachments || false,
+      attachment_names: data.attachment_names || [],
+      attachment_count: data.attachment_count || 0,
+      n8n_source: true,
+      n8n_parsed_at: data.parsed_at || new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('ticket_emails insert error:', e.message);
+    // Non-blocking — ticket already created
+  }
+
+  // === STEP 3: Upload attachment to Storage + insert into ticket_attachments ===
+  let attachmentId = null;
+  let attachmentUrl = null;
+
+  if (data.attachment_base64) {
     try {
       const base64Data = data.attachment_base64;
       if (base64Data.length < 5 * 1024 * 1024) {
         const buffer = Buffer.from(base64Data, 'base64');
         const mime = data.attachment_mime_type || 'image/jpeg';
         const ext = mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg';
-        const filePath = `${ticketId}/attachment.${ext}`;
+        const originalName = data.attachment_filename || `attachment.${ext}`;
+        const filePath = `${ticketNumber}/${originalName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(filePath, buffer, {
-            contentType: mime,
-            upsert: true
-          });
+          .upload(filePath, buffer, { contentType: mime, upsert: true });
 
         if (!uploadError) {
           const { data: urlData } = supabase.storage
             .from('attachments')
             .getPublicUrl(filePath);
-          ticket.attachment_url = urlData.publicUrl;
+          attachmentUrl = urlData.publicUrl;
+
+          // Insert attachment record
+          const { data: attRecord } = await supabase
+            .from('ticket_attachments')
+            .insert({
+              ticket_id: ticketId,
+              file_name: originalName,
+              mime_type: mime,
+              storage_url: attachmentUrl,
+              size_bytes: buffer.length,
+            })
+            .select('id')
+            .single();
+
+          if (attRecord) attachmentId = attRecord.id;
         } else {
           console.error('Storage upload error:', uploadError.message);
         }
@@ -126,37 +145,67 @@ export default async function handler(req, res) {
     }
   }
 
-  // Persist to Supabase
-  let supabaseOk = false;
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
-    const { error } = await supabase.from('tickets').upsert(ticket, { onConflict: 'id' });
-    if (error) {
-      console.error('Supabase insert error:', error.message);
-    } else {
-      supabaseOk = true;
-      // Log activity
-      await supabase.from('activity_log').insert({
+  // === STEP 4: Insert vision results into ticket_vision_results ===
+  if (data.vision_parsed) {
+    try {
+      await supabase.from('ticket_vision_results').insert({
         ticket_id: ticketId,
-        action: 'CREATE',
-        message: `${ticketId} auto-created via n8n from ${data.company || 'email'}`
+        attachment_id: attachmentId,
+        vision_parsed: true,
+        vision_confidence: data.vision_confidence || 0,
+        vision_status: data.vision_status || 'none',
+        document_type: data.document_type || '',
+        document_signers: data.document_signers || [],
+        amount_on_document: data.amount_on_document || 0,
+        depositor_name: data.depositor_name || '',
+        remark: data.remark || '',
+        transaction_id: data.transaction_id || '',
       });
+    } catch (e) {
+      console.error('ticket_vision_results insert error:', e.message);
     }
   }
 
-  // Dashboard URLs
-  const dashboardUrl = `https://project-ii0tm.vercel.app/?ticket=${ticketId}`;
-  const encoded = Buffer.from(JSON.stringify(ticket)).toString('base64');
-  const legacyUrl = `https://wave-emi-dashboard.vercel.app/?n8n_ticket=${encoded}`;
+  // === STEP 5: Insert employee extraction into ticket_employee_extractions ===
+  if (data.extracted_employees && data.extracted_employees.length > 0) {
+    try {
+      await supabase.from('ticket_employee_extractions').insert({
+        ticket_id: ticketId,
+        extracted_employees: data.extracted_employees,
+        employee_count: data.extracted_employee_count || data.extracted_employees.length,
+        total_amount: data.employee_total_extracted || 0,
+        confidence: data.employee_extraction_confidence || 0,
+        status: data.employee_extraction_status || 'success',
+        amount_mismatch: data.employee_amount_mismatch || false,
+      });
+    } catch (e) {
+      console.error('ticket_employee_extractions insert error:', e.message);
+    }
+  }
+
+  // === STEP 6: Activity log ===
+  try {
+    await supabase.from('activity_log').insert({
+      ticket_id: ticketNumber,  // Keep TKT-xxx for readability
+      action: 'CREATE',
+      message: `${ticketNumber} auto-created via n8n from ${data.company || 'email'}`,
+    });
+  } catch (e) {
+    console.error('activity_log insert error:', e.message);
+  }
+
+  // === RESPONSE ===
+  const dashboardUrl = `https://project-ii0tm.vercel.app/?ticket=${ticketNumber}`;
 
   return res.status(200).json({
     success: true,
-    ticket_id: ticketId,
+    ticket_id: ticketNumber,      // TKT-xxx for display
+    ticket_uuid: ticketId,        // UUID for internal use
     dashboard_url: dashboardUrl,
-    legacy_dashboard_url: legacyUrl,
-    supabase_persisted: supabaseOk,
-    company: ticket.company,
-    amount: ticket.amount_requested,
-    scenario: ticket.scenario,
-    message: `Ticket ${ticketId} for ${ticket.company} created.`,
+    supabase_persisted: true,
+    company: data.company,
+    amount: data.amount_requested || data.amount || 0,
+    scenario: scenario,
+    message: `Ticket ${ticketNumber} for ${data.company} created.`,
   });
 }

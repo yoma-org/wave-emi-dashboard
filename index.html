@@ -663,19 +663,38 @@ function saveState(){
     localStorage.setItem(LS_PARSED, JSON.stringify([...state.parsedEmails]));
     localStorage.setItem(LS_ROLE, state.currentRole);
   } catch(e){ /* non-blocking */ }
-  // Supabase dual-write (non-blocking)
+  // Supabase dual-write to tickets_v2 (non-blocking)
   if(sb){
     const idsToSync = state._syncAllTickets
       ? Object.keys(state.tickets)
       : (state._lastSavedTicketId ? [state._lastSavedTicketId] : []);
     for(const id of idsToSync){
       const t = state.tickets[id];
-      if(!t) continue;
+      if(!t || !t._uuid) continue;  // Need UUID for normalized writes
       const copy = {...t};
+      // Remove fields that don't belong in tickets_v2 (they live in child tables)
       delete copy.bank_slip_dataurl;
       delete copy.updated_at;
-      delete copy.created_at;  // Never overwrite — let Supabase keep original
-      sb.from('tickets').upsert(copy, {onConflict:'id', ignoreDuplicates: false}).then(({error})=>{
+      delete copy.created_at;
+      delete copy.id;              // TKT-xxx display ID, not a DB column
+      delete copy.ticket_number;   // Auto-generated, don't overwrite
+      // Child table fields — read-only from VIEW
+      delete copy.source_email_id; delete copy.from_email; delete copy.to_email;
+      delete copy.cc_emails; delete copy.reply_to; delete copy.email_date;
+      delete copy.message_id; delete copy.thread_id; delete copy.original_subject;
+      delete copy.body_preview; delete copy.email_body_full;
+      delete copy.has_attachments; delete copy.attachment_names; delete copy.attachment_count;
+      delete copy.n8n_parsed_at;
+      delete copy.attachment_url; delete copy.attachment_mime_type; delete copy.attachment_file_name;
+      delete copy.vision_parsed; delete copy.vision_confidence; delete copy.vision_status;
+      delete copy.document_type; delete copy.document_signers;
+      delete copy.extracted_employees; delete copy.extracted_employee_count;
+      delete copy.employee_extraction_confidence; delete copy.employee_extraction_status;
+      delete copy.employee_total_extracted; delete copy.employee_amount_mismatch;
+      // Write to tickets_v2 using UUID
+      const uuid = t._uuid;
+      delete copy._uuid;
+      sb.from('tickets_v2').upsert({id: uuid, ...copy}, {onConflict:'id', ignoreDuplicates: false}).then(({error})=>{
         if(error) console.warn('Supabase sync:', error.message);
       });
     }
@@ -688,11 +707,15 @@ async function loadState(){
   // Try Supabase first
   if(sb){
     try{
-      const {data, error} = await sb.from('tickets').select('*').order('created_at',{ascending:false});
+      const {data, error} = await sb.from('tickets_flat').select('*').order('created_at',{ascending:false});
       if(!error && data && data.length > 0){
         state.tickets = {};
-        data.forEach(t => { state.tickets[t.id] = t; });
-        console.log('Loaded', data.length, 'tickets from Supabase');
+        data.forEach(t => {
+          t._uuid = t.id;              // Keep UUID for DB writes
+          t.id = t.ticket_number;      // Dashboard uses TKT-xxx
+          state.tickets[t.id] = t;
+        });
+        console.log('Loaded', data.length, 'tickets from Supabase (normalized)');
       }
       const {data:logs, error:logErr} = await sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(50);
       if(!logErr && logs && logs.length > 0){
@@ -748,15 +771,7 @@ function updateTicket(id, updates){
   state.tickets[id] = t;
   state._lastSavedTicketId = id;
   saveState();
-  if(sb){
-    const copy = {...t};
-    delete copy.bank_slip_dataurl;
-    delete copy.updated_at;
-    delete copy.created_at;
-    sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
-      if(error) console.warn('Supabase update:', error.message);
-    });
-  }
+  // Note: saveState() already handles tickets_v2 upsert via _uuid
 }
 
 function resetDemo(){
