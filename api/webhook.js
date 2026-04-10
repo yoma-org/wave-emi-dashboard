@@ -20,17 +20,16 @@ export default async function handler(req, res) {
   }
 
   // Generate ticket ID (query Supabase for max)
+  // Generate ticket ID — find highest NUMBER across all tickets
   let ticketId = 'TKT-001';
   try {
-    const { data: latest } = await supabase
+    const { data: allIds } = await supabase
       .from('tickets')
-      .select('id')
-      .like('id', 'TKT-%')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (latest && latest.length > 0) {
-      const num = parseInt(latest[0].id.replace('TKT-', '')) || 0;
-      ticketId = 'TKT-' + String(num + 1).padStart(3, '0');
+      .select('id');
+    if (allIds && allIds.length > 0) {
+      const nums = allIds.map(t => parseInt(t.id.replace('TKT-', '')) || 0);
+      const maxNum = Math.max(...nums);
+      ticketId = 'TKT-' + String(maxNum + 1).padStart(3, '0');
     }
   } catch (e) { /* fallback to TKT-001 */ }
 
