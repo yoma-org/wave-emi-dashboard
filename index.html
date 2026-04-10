@@ -674,7 +674,8 @@ function saveState(){
       const copy = {...t};
       delete copy.bank_slip_dataurl;
       delete copy.updated_at;
-      sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
+      delete copy.created_at;  // Never overwrite — let Supabase keep original
+      sb.from('tickets').upsert(copy, {onConflict:'id', ignoreDuplicates: false}).then(({error})=>{
         if(error) console.warn('Supabase sync:', error.message);
       });
     }
@@ -750,6 +751,8 @@ function updateTicket(id, updates){
   if(sb){
     const copy = {...t};
     delete copy.bank_slip_dataurl;
+    delete copy.updated_at;
+    delete copy.created_at;
     sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
       if(error) console.warn('Supabase update:', error.message);
     });
@@ -2539,10 +2542,12 @@ function createTicketFromN8n(data){
   if(mismatch) scenario = 'AMOUNT_MISMATCH';
   else if(!matrixComplete) scenario = 'MISSING_APPROVAL';
 
+  // Don't overwrite if ticket already exists (loaded from Supabase)
+  if(state.tickets[tid]) return;
   state.tickets[tid] = {
     id:tid, source_email_id:'N8N-'+Date.now(),
     company:data.company||'Unknown Company', type:data.type||'SalaryToMA',
-    currency:data.currency||'MMK', scenario:scenario, created_at:nowTs(),
+    currency:data.currency||'MMK', scenario:scenario, created_at:data.parsed_at||nowTs(),
     amount_requested:data.amount_requested||0,
     amount_on_bank_slip:data.amount_on_bank_slip||data.amount_requested||0,
     has_mismatch:mismatch, employee_total:null,
