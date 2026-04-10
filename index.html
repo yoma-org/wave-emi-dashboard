@@ -665,13 +665,21 @@ function saveState(){
   } catch(e){ /* non-blocking */ }
   // Supabase dual-write (non-blocking)
   if(sb){
-    for(const [k,t] of Object.entries(state.tickets)){
+    const idsToSync = state._syncAllTickets
+      ? Object.keys(state.tickets)
+      : (state._lastSavedTicketId ? [state._lastSavedTicketId] : []);
+    for(const id of idsToSync){
+      const t = state.tickets[id];
+      if(!t) continue;
       const copy = {...t};
       delete copy.bank_slip_dataurl;
+      delete copy.updated_at;
       sb.from('tickets').upsert(copy, {onConflict:'id'}).then(({error})=>{
         if(error) console.warn('Supabase sync:', error.message);
       });
     }
+    state._lastSavedTicketId = null;
+    state._syncAllTickets = false;
   }
 }
 
@@ -737,6 +745,7 @@ function updateTicket(id, updates){
   t.status = deriveStatus(t);
   t.risk_level = computeRisk(t);
   state.tickets[id] = t;
+  state._lastSavedTicketId = id;
   saveState();
   if(sb){
     const copy = {...t};
@@ -807,6 +816,7 @@ function seedDemoTickets(){
     t.risk_level = computeRisk(t);
     state.tickets[t.id] = t;
   });
+  state._syncAllTickets = true;
   saveState();
   logActivity('Demo tickets seeded (Capital Taiyo + GGI Nippon)');
 }
@@ -2583,6 +2593,7 @@ function createTicketFromN8n(data){
   };
   state.tickets[tid].status = deriveStatus(state.tickets[tid]);
   state.tickets[tid].risk_level = computeRisk(state.tickets[tid]);
+  state._lastSavedTicketId = tid;
   saveState();
   logActivity(`${tid} auto-created via n8n from ${data.company||'email'}`);
   showToast(tid+' created automatically via n8n', 'success');
