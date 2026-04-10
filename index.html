@@ -842,6 +842,7 @@ function fmtTime(ts){
   if(isNaN(d)) return '';
   const now = new Date();
   const diffMs = now - d;
+  if(diffMs < 0) return 'Just now';  // Future timestamp (clock skew) — treat as just now
   const diffMin = Math.floor(diffMs / 60000);
   if(diffMin < 1) return 'Just now';
   if(diffMin < 60) return diffMin + 'm ago';
