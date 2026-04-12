@@ -2533,12 +2533,28 @@ function downloadEmoneyReport(){
 
 function checkN8nWebhook(){
   const params = new URLSearchParams(window.location.search);
+
+  // v8: Clean URL with ticket number — open that ticket's modal directly
+  const ticketParam = params.get('ticket');
+  if(ticketParam && /^TKT-\d+$/.test(ticketParam)){
+    // Wait briefly for Supabase data to be loaded into state
+    setTimeout(() => {
+      if(state.tickets[ticketParam]){
+        openTicketDetail(ticketParam);
+      } else {
+        showToast('Ticket '+ticketParam+' not found — it may still be processing', 'warning');
+      }
+    }, 500);
+    window.history.replaceState({}, '', window.location.pathname);
+    return;
+  }
+
+  // Legacy: base64-encoded ticket data (backward compat for old URLs)
   const encoded = params.get('n8n_ticket');
   if(!encoded) return;
   try {
     const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded), c => c.charCodeAt(0))));
     createTicketFromN8n(data);
-    // Clean URL without reload
     window.history.replaceState({}, '', window.location.pathname);
   } catch(e){ console.error('Invalid n8n ticket data:', e); }
 }
