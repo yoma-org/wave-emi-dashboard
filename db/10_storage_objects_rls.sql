@@ -9,10 +9,11 @@
 -- This policy ONLY allows generating signed URLs (which expire in 1h).
 -- ============================================================================
 
--- Enable RLS on storage.objects (it's enabled by default on Supabase, but be explicit)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- NOTE: Do NOT run `ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY`
+-- in Supabase SQL Editor — that table is owned by `supabase_admin` and you'll get
+-- "must be owner of table objects". RLS is already enabled by default on storage.objects.
 
--- Drop existing policy if it exists (idempotent)
+-- Drop existing policy if it exists (idempotent — re-running this script is safe)
 DROP POLICY IF EXISTS "anon_select_attachments_objects" ON storage.objects;
 
 -- Allow anon to SELECT attachment metadata (needed for createSignedUrl)
