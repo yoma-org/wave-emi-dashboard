@@ -359,13 +359,12 @@ textarea{resize:vertical;min-height:120px;}
 .csv-table tr:last-child td{border-bottom:none;}
 .csv-table tr:hover td{background:#f8faff;}
 
-/* KAN-31 #2: eMoney simplified view — hide tabs except Dashboard */
-body.emoney-view #nav-emails,
-body.emoney-view #nav-finance,
-body.emoney-view #nav-emoney,
-body.emoney-view .role-badge,
-body.emoney-view #role-select{display:none !important;}
-body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important;}
+/* KAN-31 #2: eMoney simplified view — hide redundant Ticket List only.
+   Finance Approval + E-Money Review stay visible (workflow stations — Finance needs
+   approval queue, E-Money team needs Utiba CSV prep / checker / mapping / monitoring / closing).
+   Role badge stays visible (needed for role switching in demo mode). */
+body.emoney-view #nav-emails{display:none !important;}
+body.emoney-view .mobile-menu .nav-btn:nth-child(2){display:none !important;}  /* Ticket List is 2nd button in mobile menu */
 
 @media(max-width:700px){
   .summary-row-5{grid-template-columns:1fr 1fr;}
@@ -3017,12 +3016,12 @@ function openTicketDetail(ticketId){
 // ─── KEYBOARD SHORTCUT ────────────────────────────────────────────────────────
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey && e.shiftKey && e.key === 'R'){ e.preventDefault(); resetDemo(); }
-  // KAN-31 #2: Ctrl+Shift+D toggles eMoney simplified view vs full dev view
+  // KAN-31 #2: Ctrl+Shift+D toggles eMoney view (hides Ticket List) vs full dev view
   if(e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')){
     e.preventDefault();
     document.body.classList.toggle('emoney-view');
     const isClean = document.body.classList.contains('emoney-view');
-    showToast(isClean ? 'eMoney view (clean)' : 'Dev view (all tabs visible)', 'info');
+    showToast(isClean ? 'eMoney view (Ticket List hidden)' : 'Dev view (all tabs visible)', 'info');
   }
   if(e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(function(m){m.classList.remove('open');});
 });
