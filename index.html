@@ -1009,6 +1009,17 @@ function showToast(msg, type){
   t._timer = setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
+// Render attachment preview HTML — inline PDF (iframe) or inline image
+function renderAttachmentPreviewHtml(url, isPdf, isLegacyPublic){
+  const expiry = isLegacyPublic ? '' : '<span style="font-size:11px;color:var(--muted);margin-left:12px">Link expires in 1 hour</span>';
+  if(isPdf){
+    return '<iframe src="'+url+'#toolbar=1&navpanes=0" style="width:100%;height:600px;border:1px solid var(--border);border-radius:8px;background:#fff" title="PDF preview"></iframe>'
+      + '<div style="margin-top:8px"><a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600">\u2197 Open in new tab (full size)</a>'+expiry+'</div>';
+  }
+  return '<img src="'+url+'" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-top:4px" alt="Original attachment" loading="lazy"/>'
+    + (isLegacyPublic ? '' : '<div style="font-size:11px;color:var(--muted);margin-top:4px">Link expires in 1 hour</div>');
+}
+
 // Load attachment preview via signed URL (private bucket)
 async function loadAttachmentPreview(ticketId, previewId, isPdf){
   const previewEl = document.getElementById(previewId);
@@ -1025,8 +1036,9 @@ async function loadAttachmentPreview(ticketId, previewId, isPdf){
   const ticket = state.tickets[ticketId];
   if(!ticket || !ticket.attachment_url){ previewEl.innerHTML = 'No attachment found.'; return; }
 
-  // Legacy public URL — render directly
+  // Legacy public URL (full http://) — render inline directly
   if(ticket.attachment_url.startsWith('http')){
+    previewEl.innerHTML = renderAttachmentPreviewHtml(ticket.attachment_url, isPdf, true);
     previewEl.dataset.loaded = '1';
     return;
   }
@@ -1042,10 +1054,7 @@ async function loadAttachmentPreview(ticketId, previewId, isPdf){
       previewEl.innerHTML = '<span style="color:var(--danger)">Failed to load attachment: '+(error?.message||'unknown')+'</span>';
       return;
     }
-    const url = data.signedUrl;
-    previewEl.innerHTML = isPdf
-      ? '<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600">\uD83D\uDCC4 Open PDF attachment in new tab</a><div style="font-size:11px;color:var(--muted);margin-top:4px">Link expires in 1 hour</div>'
-      : '<img src="'+url+'" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-top:4px" alt="Original attachment" loading="lazy"/>';
+    previewEl.innerHTML = renderAttachmentPreviewHtml(data.signedUrl, isPdf, false);
     previewEl.dataset.loaded = '1';
   } catch(e){
     previewEl.innerHTML = '<span style="color:var(--danger)">Error loading attachment: '+e.message+'</span>';
@@ -2804,20 +2813,16 @@ function openTicketDetail(ticketId){
     </div>`;
   }
 
-  // Original Attachment Preview (from Supabase Storage — signed URL on demand)
+  // Original Attachment Preview (from Supabase Storage — inline iframe/img on demand)
   if(t.attachment_url){
     const isPdf = (t.attachment_mime_type||'').includes('pdf');
-    const isLegacyUrl = t.attachment_url.startsWith('http');
     const previewId = 'att-preview-'+t.id;
     html += `<div style="background:#f0f4fa;border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
       <div style="cursor:pointer;font-weight:700;color:var(--navy);font-size:14px" onclick="loadAttachmentPreview('${t.id}','${previewId}',${isPdf})">
-        \uD83D\uDCCE Original Attachment <span style="font-weight:400;color:var(--muted);font-size:12px">(click to ${isPdf?'view link':'expand'})</span>
+        \uD83D\uDCCE Original Attachment <span style="font-weight:400;color:var(--muted);font-size:12px">(click to expand)</span>
       </div>
       <div id="${previewId}" style="margin-top:10px;display:none">
-        ${isLegacyUrl ? (isPdf
-          ? '<a href="'+t.attachment_url+'" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600">\uD83D\uDCC4 Open PDF attachment in new tab</a>'
-          : '<img src="'+t.attachment_url+'" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-top:4px" alt="Original attachment" loading="lazy"/>')
-        : '<div style="color:var(--muted);font-style:italic">Loading\u2026</div>'}
+        <div style="color:var(--muted);font-style:italic">Loading\u2026</div>
       </div>
     </div>`;
   }
