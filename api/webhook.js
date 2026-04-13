@@ -205,11 +205,14 @@ export default async function handler(req, res) {
 
   // === STEP 6: Activity log ===
   try {
-    await supabase.from('activity_log').insert({
+    const { error: logError } = await supabase.from('activity_log').insert({
       ticket_id: ticketNumber,  // Keep TKT-xxx for readability
       action: 'CREATE',
       message: `${ticketNumber} auto-created via n8n from ${data.company || 'email'}`,
     });
+    if (logError) {
+      console.error('activity_log insert returned error:', logError.message, logError.details);
+    }
   } catch (e) {
     console.error('activity_log insert error:', e.message);
   }
