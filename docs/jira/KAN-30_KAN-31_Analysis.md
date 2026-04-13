@@ -204,22 +204,24 @@ Default assumptions will be used if Vinh doesn't respond — but document assump
 
 | Task | Status | Commit | Date |
 |------|--------|--------|------|
-| Text renames (KAN-31 #1,3,4) | ⏳ Pending | — | — |
-| Subtitle + quick-filter panels removal (KAN-31 #4,8) | ⏳ Pending | — | — |
-| 5 → 3 stat cards (KAN-31 #5) | ⏳ Pending | — | — |
-| Clickable card filters (KAN-31 #6) | ⏳ Pending | — | — |
-| Ticket ID search (KAN-31 #7) | ⏳ Pending | — | — |
-| Hide tabs (KAN-31 #2) | 🔶 Blocked on clarification | — | — |
-| Attachment count bug fix (KAN-30 #2) | ⏳ Pending | — | — |
-| Payment type display (KAN-30 #1) | ⏳ Pending | — | — |
-| Verification checklist expansion (KAN-30 #3) | ⏳ Pending | — | — |
-| Ticket ID in email (KAN-30 #4) | ⏳ Pending | — | — |
-| Pipeline v10 clone + activation | ⏳ Pending | — | — |
-| End-to-end testing | ⏳ Pending | — | — |
-| Vinh clarification sent | ⏳ Pending | — | — |
-| Jira tickets moved to Done | ⏳ Pending | — | — |
+| Text renames title/logo/h2 (KAN-31 #1, #3) | ✅ Done | `56f1120` | 2026-04-13 |
+| Remove subtitle (KAN-31 #4) | ✅ Done | `56f1120` | 2026-04-13 |
+| Remove 3 quick-filter panels (KAN-31 #8) | ✅ Done | `56f1120` | 2026-04-13 |
+| 5 → 3 stat cards (KAN-31 #5) | ✅ Done | `3064498` | 2026-04-13 |
+| Clickable card filters (KAN-31 #6) | ✅ Done | `3064498` | 2026-04-13 |
+| Ticket ID search (KAN-31 #7) | ✅ Done | `3064498` | 2026-04-13 |
+| Hide tabs — CSS via body.emoney-view (KAN-31 #2, initial) | ✅ Done | `3064498` | 2026-04-13 |
+| Hide tabs — Option A correction (Ticket List only) | ✅ Done | `f96dfef` | 2026-04-13 |
+| Attachment count bug fix (KAN-30 #2) | ✅ Done | `56aac88` | 2026-04-13 |
+| Payment type display (KAN-30 #1) | ✅ Done | `56aac88` | 2026-04-13 |
+| Verification 7-item checklist (KAN-30 #3) | ✅ Done | `56aac88` | 2026-04-13 |
+| Ticket ID in email (KAN-30 #4) | ✅ Done | `56aac88` | 2026-04-13 |
+| Pipeline v10 imported + activated in n8n Cloud | ✅ Done | — (DK manual) | 2026-04-13 |
+| End-to-end test via Outlook channel (TKT-021 verified) | ✅ Done | — | 2026-04-13 |
+| End-to-end test via manual webhook | ⚠️ Deferred | known-issue (pre-existing n8n Task Runner quirk, logged) | — |
+| Jira tickets moved to Done | ⏳ In progress | Block 4 now | 2026-04-13 |
 
-Update this table as work progresses. Reference commit SHAs and dates.
+**Summary:** 12/12 Vinh requirements implemented and verified. 4 commits landed tonight. v10 pipeline active in n8n Cloud, v9 kept as fallback. Manual webhook testing deferred to v11 (pre-existing pipeline code issue, not a KAN-30 regression — see `memory/known_issue_manual_webhook_test_payload.md`).
 
 ---
 
