@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Wave EMI Pipeline — Intake & Approval Dashboard</title>
+<title>Wave eMoney — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -378,7 +378,7 @@ textarea{resize:vertical;min-height:120px;}
 <body>
 
 <nav>
-  <div class="nav-logo"><span>W</span> Wave EMI Pipeline</div>
+  <div class="nav-logo"><span>W</span> Wave eMoney</div>
   <div class="nav-links">
     <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</button>
     <button class="nav-btn" onclick="showPage('emails')" id="nav-emails">Ticket List</button>
@@ -1137,8 +1137,7 @@ function renderDashboard(){
   const visionProcessed = allTickets().filter(t=>t.vision_parsed).length;
 
   let html = `
-    <div class="section-title">\uD83C\uDF0A Wave EMI Pipeline Dashboard</div>
-    <div class="section-sub">Unified command center \u2014 Steps 1\u20137: Intake → Approval → Disbursement → Close</div>
+    <div class="section-title">\uD83C\uDF0A eMoney Dashboard</div>
     <div class="summary-row-5">
       <div class="stat-card accent"><div class="stat-label">New Emails</div><div class="stat-value">${newEmails}</div><div class="stat-sub">awaiting intake</div></div>
       <div class="stat-card ${pending>0?'warn':''}"><div class="stat-label">Pending</div><div class="stat-value">${pending}</div><div class="stat-sub">need action</div></div>
@@ -1146,7 +1145,6 @@ function renderDashboard(){
       <div class="stat-card ${inProg>0?'blue':''}"><div class="stat-label">Processing</div><div class="stat-value">${inProg}</div><div class="stat-sub">in pipeline</div></div>
       <div class="stat-card ok"><div class="stat-label">Completed</div><div class="stat-value">${completed}</div><div class="stat-sub">disbursed</div></div>
     </div>
-    ${mismatches>0||highRisk>0||visionProcessed>0?`<div style="display:flex;gap:12px;margin-bottom:16px">${visionProcessed>0?`<div class="alert" style="flex:1;margin:0;background:#f5f3ff;border-color:#c4b5fd;color:#5b21b6">\uD83D\uDC41 ${visionProcessed} ticket(s) with Vision AI</div>`:''}${mismatches>0?`<div class="alert alert-warn" style="flex:1;margin:0">\u26A0\uFE0F ${mismatches} amount mismatch(es)</div>`:''}${highRisk>0?`<div class="alert alert-danger" style="flex:1;margin:0">\uD83D\uDD34 ${highRisk} high-risk ticket(s)</div>`:''}</div>`:''}
   `;
 
   if(tickets.length === 0){
