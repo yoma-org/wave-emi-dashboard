@@ -3295,18 +3295,21 @@ function openTicketDetail(ticketId){
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ticket-detail-modal').classList.remove('open')" style="font-size:20px;padding:4px 8px">&times;</button>
   </div>`;
 
-  // Wave 3D+3E: Quick Actions row — Return to Client (red) + Approve & Download CSV (green)
+  // KAN-36: Quick Actions row — Return to Client (red) + Generate CSV for Finance (green, gated)
   const alreadyApproved = t.finance_status === 'APPROVED';
   const alreadyReturned = t.status === 'ASKED_CLIENT';
-  const hasEmployees = (t.extracted_employees || []).length > 0;
   const hasSenderEmail = !!t.from_email;
+  const k36 = kan36Completeness(t);
+  const csvBtnTooltip = k36.complete
+    ? 'Ticket has enough data — generate Finance CSV and mark ticket approved'
+    : (k36.hasMismatch ? 'Amount mismatch detected — resolve before generating CSV' : 'Missing: ' + k36.hardMissing.join(', '));
   if(!alreadyApproved && !alreadyReturned){
     html += `<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn btn-danger" onclick="returnToClient('${t.id}')" title="${hasSenderEmail ? 'Send email back to client (' + t.from_email + ') asking for correction' : 'No sender email on this ticket — cannot return'}" ${hasSenderEmail ? '' : 'disabled'}>
         \u21A9 Return to Client
       </button>
-      <button class="btn btn-success" onclick="approveAndDownloadCSV('${t.id}')" title="${hasEmployees ? 'Approve ticket + download employee CSV for Finance' : 'No employee list extracted yet — cannot download CSV'}" ${hasEmployees ? '' : 'disabled'}>
-        \u2713 Approve &amp; Download CSV${hasEmployees ? ' (' + (t.extracted_employees || []).length + ' employees)' : ''}
+      <button class="btn btn-success" onclick="approveAndDownloadCSV('${t.id}')" title="${csvBtnTooltip}" ${k36.complete ? '' : 'disabled'}>
+        \uD83D\uDCCA Generate CSV for Finance${k36.complete && (t.extracted_employees||[]).length > 0 ? ' (' + t.extracted_employees.length + ' employees)' : ''}
       </button>
     </div>`;
   } else if(alreadyApproved){
