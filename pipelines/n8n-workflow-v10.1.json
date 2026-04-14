@@ -1,0 +1,321 @@
+{
+  "name": "EMI Email Intake Pipeline v10.1 (KAN-35 + Payroll Period)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## EMI Pipeline — Two Intake Paths\n\n**INTAKE: Outlook Mailbox (production)**\nPolls `emoney@zeyalabs.ai` for new client emails. This is the real production trigger.\n\n**INTAKE: Manual Test (POST JSON)**\nAccepts POST to `/emi-intake` with a JSON email payload. Used for:\n- Testing without sending real emails\n- Replaying problematic emails for debugging\n- Integration tests / CI\n- Manual ticket injection if email pipeline breaks\n\n**Both paths feed into:**\nPrepare for AI → Groq Text Extract → Vision Process (dual Groq/Gemini) → Employee List Extract → AI Parse & Validate → POST to Vercel webhook (`/api/webhook.js`) → Send Outlook Notification\n\n**Note: The 'webhook' node here (intake) is DIFFERENT from the Vercel webhook (persistence).**\n- Intake webhook = entry INTO n8n\n- Vercel webhook = exit OUT of n8n (persists to Supabase)",
+        "height": 420,
+        "width": 480
+      },
+      "id": "sticky-note-architecture",
+      "name": "Pipeline Architecture Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -150,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emi-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "INTAKE: Manual Test (POST JSON)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "emi-intake"
+    },
+    {
+      "parameters": {
+        "simple": false,
+        "output": "raw",
+        "filters": {},
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "outlook-trigger",
+      "name": "INTAKE: Outlook Mailbox (production)",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        520
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_OUTLOOK_CREDENTIAL_ID",
+          "name": "Outlook (emoney@zeyalabs.ai)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare raw email data for AI extraction (v8 — same as v7, unchanged)\n// v7: try/catch error guard for malformed emails (calendar invites, system notifications)\n// v6: Outlook data format support, external email warning strip, internal domain filter\n// v5.1: full email body passthrough, circuit breaker fix\n// v3: binary attachment extraction + rate limiting\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\n\n// v7: Error guard — skip binary-only items and malformed emails\nif (!item.json || typeof item.json !== 'object' || Array.isArray(item.json)) {\n  return [];\n}\nconst d = item.json;\n\n// v7: Skip items that are just binary attachments (no email metadata)\nif (!d.subject && !d.bodyPreview && !d.snippet && !d.Subject && !d.From && !(d.body && d.body.content) && !(d.payload && d.payload.headers) && !d.from) {\n  return [];\n}\n\n// Rate limit: text calls (persists across production executions)\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (staticData.date !== today) {\n  staticData.date = today;\n  staticData.textCalls = 0;\n  staticData.visionCalls = 0;\n  staticData.visionErrors = 0;\n}\nif (staticData.textCalls >= 100) {\n  return []; // Daily text cap reached\n}\nstaticData.textCalls++;\n\n// Helper: resolve a value that might be string, object, or array to a readable string\nfunction resolveValue(val) {\n  if (typeof val === 'string') return val;\n  if (val && typeof val === 'object') {\n    if (val.text && typeof val.text === 'string') return val.text;\n    if (Array.isArray(val.value) && val.value[0]) {\n      const parts = val.value.map(v => v.address ? (v.name ? v.name + ' <' + v.address + '>' : v.address) : '');\n      return parts.filter(Boolean).join(', ');\n    }\n    if (val.address) return val.name ? val.name + ' <' + val.address + '>' : val.address;\n    if (Array.isArray(val)) {\n      return val.map(v => resolveValue(v)).filter(Boolean).join(', ');\n    }\n    try { const j = JSON.stringify(val); if (j !== '{}') return j; } catch(e) {}\n  }\n  return '';\n}\n\n// Helper: extract any email header by name (works across all Gmail data formats)\nfunction getHeader(name) {\n  if (d.payload && d.payload.headers && Array.isArray(d.payload.headers)) {\n    const h = d.payload.headers.find(h => h.name && h.name.toLowerCase() === name.toLowerCase());\n    if (h && h.value) return h.value;\n  }\n  const capKey = name.charAt(0).toUpperCase() + name.slice(1);\n  if (d[capKey]) return resolveValue(d[capKey]);\n  if (d[name.toLowerCase()]) return resolveValue(d[name.toLowerCase()]);\n  if (d.headers && typeof d.headers === 'object' && !Array.isArray(d.headers)) {\n    const val = d.headers[name] || d.headers[name.toLowerCase()];\n    if (val) return resolveValue(val);\n  }\n  return '';\n}\n\nconst isEmail = d.snippet !== undefined || d.threadId !== undefined || d.Subject !== undefined || d.From !== undefined || (d.payload && d.payload.headers) || d.bodyPreview !== undefined || (d.from && d.from.emailAddress);\nconst source = isEmail ? 'email' : 'webhook';\n\nconst subject = isEmail\n  ? (d.subject || getHeader('Subject') || '')\n  : (d.body?.subject || d.subject || '');\n\n// LOOP GUARD: skip our own notification emails\nif (isEmail && (subject.includes('EMI Pipeline:') || subject.includes('EMI Pipeline \\u2014'))) {\n  return [];\n}\n\n// v6: Skip internal Yoma/Wave emails that aren't disbursement requests\nconst internalDomains = ['yoma.com.mm', 'wavemoney.com.mm'];\nconst senderDomain = (d.from && d.from.emailAddress ? d.from.emailAddress.address : '').split('@')[1] || '';\nif (isEmail && internalDomains.includes(senderDomain) && !subject.toLowerCase().includes('disbursement') && !subject.toLowerCase().includes('payroll') && !subject.toLowerCase().includes('salary')) {\n  return [];\n}\n\nlet body = '';\nif (isEmail) {\n  body = d.textPlain || d.text || (d.body && d.body.content ? d.body.content : '') || d.bodyPreview || d.snippet || d.textHtml || '';\n  if ((!body || body.length < 50) && d.payload && d.payload.parts) {\n    for (const part of d.payload.parts) {\n      if (part.mimeType === 'text/plain' && part.body && part.body.data) {\n        try { body = Buffer.from(part.body.data, 'base64').toString('utf-8'); } catch(e) {}\n        break;\n      }\n    }\n  }\n  if ((!body || body.length < 50) && d.payload && d.payload.body && d.payload.body.data) {\n    try { body = Buffer.from(d.payload.body.data, 'base64').toString('utf-8'); } catch(e) {}\n  }\n  body = body.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();\n  // v6: Strip Outlook external email warnings that confuse AI extraction\n  body = body.replace(/You don't often get email from[^.]*\\./g, '').trim();\n  body = body.replace(/Learn why this is important/g, '').trim();\n  body = body.replace(/EXTERNAL EMAIL:[^.]*\\./g, '').trim();\n  body = body.replace(/This email originated from outside of the organization[^.]*\\./g, '').trim();\n} else {\n  const raw = d.body?.body || d.bodyPreview || d.body || '';\n  body = typeof raw === 'string' ? raw : '';\n}\n\nlet from = '';\nif (isEmail) {\n  // Outlook format: from.emailAddress.address\n  if (d.from && d.from.emailAddress && d.from.emailAddress.address) {\n    from = d.from.emailAddress.address;\n  } else {\n    let rawFrom = getHeader('From');\n    if (!rawFrom) {\n      for (const [key, val] of Object.entries(d)) {\n        if (key.toLowerCase().includes('from') && typeof val === 'string' && val.includes('@')) {\n          rawFrom = val; break;\n        }\n      }\n    }\n    if (typeof rawFrom === 'string' && rawFrom) {\n      const m = rawFrom.match(/<([^>]+)>/);\n      from = m ? m[1] : rawFrom.trim();\n    }\n  }\n} else {\n  from = d.body?.from || d.from || '';\n}\n\n// Outlook: toRecipients[].emailAddress.address, ccRecipients, receivedDateTime, conversationId\nconst to_email = isEmail ? (d.toRecipients ? d.toRecipients.map(r => r.emailAddress ? r.emailAddress.address : '').join(', ') : getHeader('To')) : '';\nconst cc_emails = isEmail ? (d.ccRecipients ? d.ccRecipients.map(r => r.emailAddress ? r.emailAddress.address : '').join(', ') : getHeader('Cc')) : '';\nconst reply_to = isEmail ? (d.replyTo ? (Array.isArray(d.replyTo) ? d.replyTo.map(r => r.emailAddress ? r.emailAddress.address : '').join(', ') : '') : getHeader('Reply-To')) : '';\nconst email_date = isEmail ? (d.receivedDateTime || getHeader('Date')) : '';\nconst message_id = d.id || (isEmail ? getHeader('Message-ID') : '') || '';\nconst thread_id = d.conversationId || d.threadId || '';\n\nlet has_attachments = d.hasAttachments || false;\nconst attachment_names = [];\nfunction scanParts(parts) {\n  if (!Array.isArray(parts)) return;\n  for (const part of parts) {\n    if (part.filename && part.filename.length > 0) {\n      has_attachments = true;\n      attachment_names.push(part.filename);\n    }\n    if (part.parts) scanParts(part.parts);\n  }\n}\nif (d.payload && d.payload.parts) scanParts(d.payload.parts);\n// Outlook attachments: already handled via downloadAttachments option in trigger node\n\n// === v3 NEW: Binary attachment extraction (n8n Cloud Task Runner compatible) ===\nconst attachment_base64_list = [];\nconst MAX_ATTACHMENTS = 2;\nconst MAX_SIZE = 4 * 1024 * 1024; // 4MB Groq hard limit\n\nif (item.binary) {\n  const keys = Object.keys(item.binary).filter(k => k.startsWith('attachment_'));\n  for (let j = 0; j < Math.min(keys.length, MAX_ATTACHMENTS); j++) {\n    const meta = item.binary[keys[j]];\n    const mime = meta.mimeType || '';\n    // v9: Populate attachment_names for Outlook (was Gmail-only via scanParts)\n    if (meta.fileName && !attachment_names.includes(meta.fileName)) {\n      attachment_names.push(meta.fileName);\n      has_attachments = true;\n    }\n    if (mime.startsWith('image/') || mime === 'application/pdf') {\n      try {\n        // Task Runner: use helpers.getBinaryDataBuffer (no this.)\n        const buffer = await helpers.getBinaryDataBuffer($itemIndex, keys[j]);\n        if (buffer.length <= MAX_SIZE) {\n          attachment_base64_list.push({\n            filename: meta.fileName || keys[j],\n            mimeType: mime,\n            base64: buffer.toString('base64'),\n            sizeBytes: buffer.length\n          });\n        }\n      } catch (e) { /* Binary extraction failed — continue without */ }\n    }\n  }\n}\n\n// v10/KAN-30 #2: sync has_attachments with real count (Outlook hasAttachments flag can lie when binaries not downloaded)\nhas_attachments = attachment_names.length > 0;\n\nconst prompt = `You are an email parser for Wave Money's EMI (Electronic Money Issuer) salary disbursement pipeline in Myanmar.\n\nAnalyze this email and extract structured data.\n\nEMAIL SUBJECT: ${subject}\nEMAIL BODY: ${body}\nFROM: ${from}\n\nReturn a JSON object with these exact fields:\n{\n  \"is_disbursement\": true or false (is this a salary/EMI/disbursement/OTC request?),\n  \"company\": \"company name requesting disbursement\",\n  \"amount\": number (total amount in MMK, 0 if not found),\n  \"type\": \"SalaryToOTC\" if OTC or over-the-counter is mentioned, otherwise \"SalaryToMA\",\n  \"approvers\": [{\"name\": \"person name\", \"role\": \"their title/role\", \"status\": \"Approved\"}],\n  \"body_preview\": \"first 200 characters of the email body\",\n  \"payment_date\": \"the date the client wants the salary to be disbursed (their intended pay day), format YYYY-MM-DD or as written; empty string if not mentioned\",\n  \"payroll_period\": \"the time period the salary covers (e.g., 'March 2026' or 'Apr 1-15, 2026'); empty string if not mentioned. NOTE: payment_date is WHEN money moves, payroll_period is WHAT WORK PERIOD the money covers — these are different\"\n}\n\nIMPORTANT: Return ONLY the JSON object, no explanation or markdown.`;\n\nreturn {\n  json: {\n    _source: source,\n    from_email: from,\n    original_subject: subject,\n    prompt: prompt,\n    to_email: to_email,\n    cc_emails: cc_emails,\n    reply_to: reply_to,\n    email_date: email_date,\n    message_id: message_id,\n    thread_id: thread_id,\n    has_attachments: has_attachments,\n    attachment_names: attachment_names,\n    attachment_count: attachment_names.length,\n    // v5.1: pass full email body to dashboard (capped at 2000 chars for URL safety)\n    email_body_full: body.substring(0, 2000),\n    // v3: binary attachment data for vision processing\n    attachment_base64: attachment_base64_list[0] || null,\n    vision_eligible: attachment_base64_list.length > 0,\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "prepare-for-ai-v3",
+      "name": "Prepare for AI v3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_GROQ_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: $json.prompt }], response_format: { type: 'json_object' }, temperature: 0.1 }) }}",
+        "options": {}
+      },
+      "id": "groq-extract",
+      "name": "Groq AI Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Employee List Extract (v8 — same as v7, unchanged)\n// v7: Error guard + all fixes baked in\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\nif (!item.json || typeof item.json !== 'object') return { json: { ...item.json, _employee_result: null, _employee_status: 'skipped' } };\nconst d = item.json;\n\nconst prepData = $('Prepare for AI v3').first().json;\nconst attachment = prepData.attachment_base64;\n\nif (!attachment || !prepData.vision_eligible) {\n  return { json: { ...d, _employee_result: null, _employee_status: 'no_attachment' } };\n}\n\nconst staticData = $getWorkflowStaticData('global');\nif ((staticData.visionCalls || 0) >= 20) {\n  return { json: { ...d, _employee_result: null, _employee_status: 'rate_limited' } };\n}\nstaticData.visionCalls = (staticData.visionCalls || 0) + 1;\n\nconst isPdf = attachment.mimeType === 'application/pdf' ||\n  (attachment.mimeType === 'application/octet-stream' &&\n    (attachment.filename || '').toLowerCase().endsWith('.pdf'));\n\nconst prompt = 'Extract the employee/payroll list from this document. Return JSON only: {\"employees\":[{\"name\":\"Full Name as written\",\"account_or_phone\":\"phone or account number exactly as shown\",\"amount\":0}],\"total_amount\":0,\"employee_count\":0,\"confidence\":0.0}. Rules: Extract EVERY employee row. account_or_phone: copy exact digits. amount: numeric only, no commas. If no employee table found, return empty employees array with confidence 0.';\n\ntry {\n  let parsed = { employees: [], confidence: 0 };\n\n  if (isPdf) {\n    // === GEMINI PATH (PDF native via inlineData) ===\n    const resp = await helpers.httpRequest({\n      method: 'POST',\n      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY',\n      headers: { 'content-type': 'application/json' },\n      body: {\n        contents: [{ parts: [\n          { text: prompt + '\\n\\nIMPORTANT: Return ONLY valid JSON, no explanation or markdown.' },\n          { inlineData: { mimeType: 'application/pdf', data: attachment.base64 } }\n        ]}],\n        generationConfig: { temperature: 0.1, maxOutputTokens: 4000 }\n      },\n      json: true\n    });\n    if (resp.candidates && resp.candidates[0] && resp.candidates[0].content) {\n      const content = resp.candidates[0].content.parts[0].text || '';\n      const cleaned = content.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n      try { parsed = JSON.parse(cleaned); } catch(e) {\n        const jsonMatch = cleaned.match(/\\{[\\s\\S]*\\}/);\n        if (jsonMatch) { try { parsed = JSON.parse(jsonMatch[0]); } catch(e2) {} }\n      }\n    }\n  } else {\n    // === GROQ PATH (images - unchanged, free, proven) ===\n    const resp = await helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.groq.com/openai/v1/chat/completions',\n      headers: {\n        'Authorization': 'Bearer REPLACE_WITH_GROQ_API_KEY',\n        'Content-Type': 'application/json'\n      },\n      body: {\n        model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n        messages: [{\n          role: 'user',\n          content: [\n            { type: 'text', text: prompt },\n            { type: 'image_url', image_url: { url: 'data:' + attachment.mimeType + ';base64,' + attachment.base64 } }\n          ]\n        }],\n        response_format: { type: 'json_object' },\n        temperature: 0.1,\n        max_tokens: 4000\n      },\n      json: true\n    });\n    if (resp.choices && resp.choices[0]) {\n      const content = resp.choices[0].message.content || '';\n      try { parsed = JSON.parse(content); } catch(e) {}\n    }\n  }\n\n  return { json: { ...d, _employee_result: parsed, _employee_status: isPdf ? 'success_gemini_pdf' : 'success', _employee_provider: isPdf ? 'gemini' : 'groq' } };\n\n} catch(e) {\n  return { json: { ...d, _employee_result: { error_message: e.message || String(e) }, _employee_status: isPdf ? 'gemini_api_error' : 'api_error' } };\n}\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "employee-extract",
+      "name": "Employee List Extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response, validate authority matrix, merge vision results (v8)\n// v8: webhook POST moved inside loop — uses response's ticket_id for clean dashboard URL\n// v3: vision merge, cross-validation, AMOUNT_MISMATCH scenario\n\nconst items = $input.all();\nconst results = [];\n\n// Retrieve metadata from Prepare node (HTTP Request + Vision nodes replace item data)\nconst prepData = $('Prepare for AI v3').first().json;\nconst source = prepData._source;\nconst from_email = prepData.from_email;\nconst original_subject = prepData.original_subject;\nconst to_email = prepData.to_email || '';\nconst cc_emails = prepData.cc_emails || '';\nconst reply_to = prepData.reply_to || '';\nconst email_date = prepData.email_date || '';\nconst message_id = prepData.message_id || '';\nconst thread_id = prepData.thread_id || '';\nconst has_attachments = prepData.has_attachments || false;\nconst attachment_names = prepData.attachment_names || [];\nconst attachment_count = prepData.attachment_count || 0;\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Extract AI response text — Groq/OpenAI format\n  let aiText = '';\n  if (d.choices && d.choices[0]) {\n    aiText = d.choices[0].message.content || '';\n  }\n\n  // Parse JSON from AI response\n  let parsed = {};\n  try {\n    parsed = JSON.parse(aiText);\n  } catch (e) {\n    // Fallback: try extracting from markdown code block\n    const jsonMatch = aiText.match(/```json?\\s*([\\s\\S]*?)```/);\n    if (jsonMatch) {\n      try { parsed = JSON.parse(jsonMatch[1]); } catch (e2) {}\n    }\n  }\n\n  // AI-powered keyword filter: skip non-disbursement emails\n  if (!parsed.is_disbursement) {\n    return [];\n  }\n\n  // AUTHORITY MATRIX CHECK\n  const required = ['Sales HOD', 'Finance Manager'];\n  const matrixResults = required.map(req => {\n    const found = (parsed.approvers || []).find(a =>\n      a.role.toLowerCase().includes(req.toLowerCase())\n    );\n    return {\n      requiredRole: req,\n      found: !!found,\n      foundName: found ? found.name : 'MISSING',\n    };\n  });\n  const matrixComplete = matrixResults.every(m => m.found);\n\n  // SCENARIO DETECTION\n  let scenario = 'NORMAL';\n  if (!matrixComplete) {\n    scenario = 'MISSING_APPROVAL';\n  }\n\n  // BUILD TICKET PAYLOAD (includes metadata)\n  const ticket = {\n    company: parsed.company || 'Unknown Company',\n    type: parsed.type || 'SalaryToMA',\n    amount_requested: parsed.amount || 0,\n    amount_on_bank_slip: parsed.amount || 0,\n    currency: 'MMK',\n    approvals: parsed.approvers || [],\n    required_approvals: required,\n    body_preview: parsed.body_preview || '',\n    email_body_full: prepData.email_body_full || '',  // v5.1: full email body for dashboard\n    original_subject: original_subject,\n    parsed_at: new Date().toISOString(),\n    scenario,\n    approval_matrix_complete: matrixComplete,\n    ai_parsed: true,\n    from_email: from_email,\n    to_email: to_email,\n    cc_emails: cc_emails,\n    reply_to: reply_to,\n    email_date: email_date,\n    message_id: message_id,\n    thread_id: thread_id,\n    has_attachments: has_attachments,\n    attachment_names: attachment_names,\n    attachment_count: attachment_count,\n  };\n\n  // === v3: Vision merge ===\n  const visionResult = d._vision_result || null;\n  const visionStatus = d._vision_status || 'none';\n\n  if (visionResult && (visionResult.confidence > 0 || visionResult.doc_type || visionResult.total_amount)) {\n    // Cross-validate amount (the \"wow\" moment for Tuesday demo)\n    if (visionResult.total_amount > 0 && ticket.amount_requested > 0) {\n      const diff = Math.abs(visionResult.total_amount - ticket.amount_requested);\n      ticket.amount_mismatch = diff > (ticket.amount_requested * 0.01); // 1% tolerance\n      ticket.amount_on_document = visionResult.total_amount;\n      // Update bank slip amount for dashboard compatibility\n      if (visionResult.total_amount > 0) {\n        ticket.amount_on_bank_slip = visionResult.total_amount;\n      }\n    }\n    ticket.document_type = visionResult.doc_type;\n    ticket.document_signers = visionResult.authorized_signers;\n    ticket.depositor_name = visionResult.depositor_name || '';\n    ticket.remark = visionResult.remark || '';\n    ticket.transaction_id = visionResult.transaction_id || visionResult.reference_number || '';\n    ticket.vision_parsed = true;\n    ticket.vision_confidence = visionResult.confidence;\n    // Override: if valid data extracted but confidence is 0, set reasonable default\n    if (ticket.vision_confidence === 0 && (visionResult.doc_type || visionResult.total_amount > 0)) {\n      ticket.vision_confidence = 0.85;\n    }\n  }\n\n  // Override scenario if vision found amount mismatch\n  if (ticket.amount_mismatch) scenario = 'AMOUNT_MISMATCH';\n  ticket.scenario = scenario; // Update after potential override\n\n  // Vision metadata for output\n  ticket.vision_status = visionStatus;\n\n  \n  // === v4: Employee list merge ===\n  const employeeResult = d._employee_result || null;\n  const employeeStatus = d._employee_status || 'none';\n\n  if (employeeResult && employeeResult.employees && employeeResult.employees.length > 0) {\n    ticket.extracted_employees = employeeResult.employees;\n    ticket.extracted_employee_count = employeeResult.employee_count || employeeResult.employees.length;\n    ticket.employee_extraction_confidence = employeeResult.confidence || 0;\n    ticket.employee_extraction_status = 'success';\n\n    // Cross-validation: sum of employee amounts vs email amount\n    const empTotal = employeeResult.employees.reduce((s, e) => s + (e.amount || 0), 0);\n    ticket.employee_total_extracted = empTotal;\n    if (ticket.amount_requested > 0 && empTotal > 0) {\n      const diff = Math.abs(empTotal - ticket.amount_requested);\n      ticket.employee_amount_mismatch = diff > (ticket.amount_requested * 0.01);\n    }\n  } else {\n    ticket.extracted_employees = [];\n    ticket.extracted_employee_count = 0;\n    ticket.employee_extraction_confidence = 0;\n    ticket.employee_extraction_status = employeeStatus;\n    ticket.employee_total_extracted = 0;\n    ticket.employee_amount_mismatch = false;\n  }\n\n  // v8: POST to webhook FIRST, get real ticket_number back, then build clean URL\n  const webhookPayload = {\n    ...ticket,\n    attachment_base64: prepData.attachment_base64 ? prepData.attachment_base64.base64 : null,\n    attachment_mime_type: prepData.attachment_base64 ? prepData.attachment_base64.mimeType : null,\n    attachment_filename: prepData.attachment_base64 ? prepData.attachment_base64.filename : null,\n  };\n  let ticketId = null;\n  let dashboardUrl = 'https://project-ii0tm.vercel.app';\n  try {\n    const webhookResp = await helpers.httpRequest({\n      method: 'POST',\n      url: 'https://project-ii0tm.vercel.app/api/webhook',\n      headers: {\n        'Content-Type': 'application/json',\n        'X-Webhook-Secret': 'REPLACE_WITH_WEBHOOK_SECRET'\n      },\n      body: webhookPayload,\n      json: true\n    });\n    if (webhookResp && webhookResp.ticket_id) {\n      ticketId = webhookResp.ticket_id;\n      dashboardUrl = webhookResp.dashboard_url || `https://project-ii0tm.vercel.app/?ticket=${ticketId}`;\n    }\n  } catch(e) { /* fallback — notification still sends with homepage URL */ }\n\n  results.push({\n    json: {\n      _source: source,\n      ticket_id: ticketId,\n      dashboard_url: dashboardUrl,\n      company: parsed.company || 'Unknown Company',\n      amount: parsed.amount || 0,\n      type: parsed.type || 'SalaryToMA',\n      scenario,\n      matrix_complete: matrixComplete,\n      matrix_details: matrixResults,\n      from_email: from_email,\n      original_subject: original_subject,\n      to_email: to_email,\n      cc_emails: cc_emails,\n      email_date: email_date,\n      has_attachments: has_attachments,\n      attachment_count: attachment_count,\n      // v3: vision output\n      vision_parsed: ticket.vision_parsed || false,\n      vision_confidence: ticket.vision_confidence || 0,\n      vision_status: visionStatus,\n      amount_on_document: ticket.amount_on_document || 0,\n      document_type: ticket.document_type || '',\n      document_signers: ticket.document_signers || [],\n      // v4: Employee extraction fields\n      extracted_employees: ticket.extracted_employees || [],\n      extracted_employee_count: ticket.extracted_employee_count || 0,\n      employee_extraction_confidence: ticket.employee_extraction_confidence || 0,\n      employee_extraction_status: ticket.employee_extraction_status || 'none',\n      employee_total_extracted: ticket.employee_total_extracted || 0,\n      employee_amount_mismatch: ticket.employee_amount_mismatch || false,\n      // v4: Finance fields\n      depositor_name: ticket.depositor_name || '',\n      remark: ticket.remark || '',\n      email_body_full: ticket.email_body_full || '',\n      transaction_id: ticket.transaction_id || '',\n      // v10/KAN-30 #1+#3: payment type classification + 7-item verification checklist\n      payment_type: ticket.extracted_employee_count > 0 ? 'salarytoMA' : 'salarytoOTC',\n      // v10.1/KAN-35 + verbal: separate Payment Date + Payroll Period fields\n      payment_date: parsed.payment_date || '',\n      payroll_period: parsed.payroll_period || '',\n      verification: {\n        company_name: !!(parsed.company && parsed.company !== 'Unknown Company'),\n        payment_type: true,\n        amount: (parsed.amount || 0) > 0,\n        payment_date: !!parsed.payment_date,\n        payroll_period: !!parsed.payroll_period,\n        approval: matrixComplete,\n        attachment: (attachment_count || 0) > 0,\n        employee_list: (ticket.extracted_employee_count || 0) > 0\n      },\n      // v6: Pass attachment to webhook for Supabase Storage\n      attachment_base64: prepData.attachment_base64 ? prepData.attachment_base64.base64 : null,\n      attachment_mime_type: prepData.attachment_base64 ? prepData.attachment_base64.mimeType : null,\n      attachment_filename: prepData.attachment_base64 ? prepData.attachment_base64.filename : null,\n    }\n  });\n}\n\n// v8: Webhook POST moved inside loop — ticket_id now available in results\n\nreturn results;\n"
+      },
+      "id": "parse-validate-v3",
+      "name": "AI Parse & Validate v3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "source-check",
+              "leftValue": "={{ $json._source }}",
+              "rightValue": "webhook",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-by-source",
+      "name": "Route by Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond with Dashboard URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "={{ $json.from_email ? $json.from_email : 'emoney@zeyalabs.ai' }}",
+        "subject": "=EMI Pipeline: {{ $json.company }} — {{ $json.scenario }}",
+        "bodyContent": "=\u2709\uFE0F Disbursement Request Received\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\uD83C\uDFAB  Ticket ID:   {{ $json.ticket_id || 'Pending assignment' }}\n\nYour disbursement request has been received and processed.\n\n\uD83C\uDFE2  Company:     {{ $json.company }}\n\uD83D\uDCB0  Amount:      {{ $json.amount ? Number($json.amount).toLocaleString() : '0' }} MMK\n\uD83D\uDCC4  Type:        {{ $json.payment_type === 'salarytoOTC' ? 'SalaryToOTC (no employee list)' : 'SalaryToMA (with employee list)' }}\n\uD83D\uDC65  Attachments: {{ $json.attachment_count > 0 ? $json.attachment_count + ' file(s): ' + ($json.attachment_names || []).join(', ') : 'None' }}\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\uD83D\uDD0D  Verification Status\n\n{{ $json.verification && $json.verification.company_name ? '\u2705' : '\u26A0\uFE0F' }} Company name: {{ $json.company }}\n{{ $json.verification && $json.verification.payment_type ? '\u2705' : '\u26A0\uFE0F' }} Payment type: {{ $json.payment_type || 'unknown' }}\n{{ $json.verification && $json.verification.amount ? '\u2705' : '\u26A0\uFE0F' }} Amount: {{ $json.amount ? Number($json.amount).toLocaleString() : '0' }} MMK\n{{ $json.verification && $json.verification.payment_date ? '\u2705' : '\u26A0\uFE0F' }} Payment date: {{ $json.payment_date || 'Not specified in request' }}\n{{ $json.verification && $json.verification.payroll_period ? '\u2705' : '\u26A0\uFE0F' }} Payroll period: {{ $json.payroll_period || 'Not specified in request' }}\n{{ $json.verification && $json.verification.approval ? '\u2705' : '\u26A0\uFE0F' }} Approval: {{ $json.matrix_complete ? 'Sales HOD + Finance Manager found' : 'Missing required approvals' }}\n{{ $json.verification && $json.verification.attachment ? '\u2705' : '\u26A0\uFE0F' }} Attachment: {{ $json.attachment_count > 0 ? $json.attachment_count + ' file(s)' : 'None detected' }}\n{{ $json.verification && $json.verification.employee_list ? '\u2705' : '\u26A0\uFE0F' }} Employee list: {{ $json.extracted_employee_count > 0 ? $json.extracted_employee_count + ' employees extracted' : 'None detected (defaults to salarytoOTC)' }}\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u27A1\uFE0F  Next Steps\n\n{{ $json.scenario === 'NORMAL' ? '1. E-Money team will review and prepare files\\n2. Finance approval (if required)\\n3. Disbursement processing' : $json.scenario === 'MISSING_APPROVAL' ? '1. Please ensure Sales HOD and Finance Manager approvals are included\\n2. Resubmit with complete approvals\\n3. Contact emoney@zeyalabs.ai for questions' : '1. Amount discrepancy detected \u2014 please verify\\n2. Resubmit with corrected amounts\\n3. Contact emoney@zeyalabs.ai for questions' }}\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\uD83D\uDD17  Track this request{{ $json.ticket_id ? ' (' + $json.ticket_id + ')' : '' }}:\n{{ $json.dashboard_url }}\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nWave Money | E-Money Operations\nemoney@zeyalabs.ai",
+        "options": {
+          "ccRecipients": "emoney@zeyalabs.ai"
+        }
+      },
+      "id": "send-notification",
+      "name": "Send Outlook Notification",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        520
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_OUTLOOK_CREDENTIAL_ID",
+          "name": "Outlook (emoney@zeyalabs.ai)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vision Process (v8 — same as v7, unchanged)\n// v7: Error guard + all fixes baked in\n// Model: gemini-2.5-flash (stable). To upgrade: replace with gemini-3-flash-preview\n// Gemini handles PDF natively via inlineData (no conversion needed)\n// Groq path unchanged for images (free, proven)\n// MODE: Run Once for Each Item (n8n 2.x Task Runner compatible)\n\nconst item = $input.item;\nif (!item.json || typeof item.json !== 'object') return { json: { _vision_result: null, _vision_status: 'skipped' } };\nconst d = item.json;\n\nconst staticData = $getWorkflowStaticData('global');\nconst today = new Date().toISOString().slice(0, 10);\nif (staticData.date !== today) {\n  staticData.date = today;\n  staticData.textCalls = 0;\n  staticData.visionCalls = 0;\n  staticData.visionErrors = 0;\n}\n\nconst prepData = $('Prepare for AI v3').first().json;\nconst attachment = prepData.attachment_base64;\nconst visionEligible = prepData.vision_eligible;\n\nlet visionResult = null;\nlet visionStatus = 'none';\nlet visionUsage = null;\n\nconst rateLimitOK = staticData.visionCalls < 20;\nconst circuitBreakerOK = (staticData.visionErrors || 0) < 5;\n\nconst isPdf = attachment && (\n  attachment.mimeType === 'application/pdf' ||\n  (attachment.mimeType === 'application/octet-stream' &&\n    (attachment.filename || '').toLowerCase().endsWith('.pdf'))\n);\n\nconst visionPrompt = 'Extract from this bank slip / payment document. Return JSON only:\\n{\\n  \"doc_type\": \"bank_slip\" | \"payment_instruction\" | \"payroll_form\" | \"unknown\",\\n  \"depositor_name\": \"\",\\n  \"company_name\": \"\",\\n  \"total_amount\": 0,\\n  \"currency\": \"\",\\n  \"remark\": \"\",\\n  \"payment_date\": \"\",\\n  \"payment_method\": \"\",\\n  \"transaction_id\": \"\",\\n  \"authorized_signers\": [{\"name\": \"\", \"role\": \"\"}],\\n  \"reference_number\": \"\",\\n  \"confidence\": 0.0\\n}';\n\nif (visionEligible && attachment && rateLimitOK && circuitBreakerOK) {\n  try {\n    staticData.visionCalls++;\n    let resp;\n\n    if (isPdf) {\n      // === GEMINI PATH (PDF native support via inlineData) ===\n      resp = await helpers.httpRequest({\n        method: 'POST',\n        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY',\n        headers: { 'content-type': 'application/json' },\n        body: {\n          contents: [{ parts: [\n            { text: visionPrompt + '\\n\\nIMPORTANT: Return ONLY valid JSON, no explanation or markdown.' },\n            { inlineData: { mimeType: 'application/pdf', data: attachment.base64 } }\n          ]}],\n          generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }\n        },\n        json: true\n      });\n      if (resp.candidates && resp.candidates[0] && resp.candidates[0].content) {\n        const content = resp.candidates[0].content.parts[0].text || '';\n        const cleaned = content.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n        try {\n          visionResult = JSON.parse(cleaned);\n          visionStatus = 'success_gemini_pdf';\n          staticData.visionErrors = 0;\n        } catch (e) {\n          const jsonMatch = cleaned.match(/\\{[\\s\\S]*\\}/);\n          if (jsonMatch) {\n            try { visionResult = JSON.parse(jsonMatch[0]); visionStatus = 'success_gemini_pdf'; } catch(e2) { visionStatus = 'parse_error'; staticData.visionErrors++; }\n          } else { visionStatus = 'parse_error'; staticData.visionErrors++; }\n        }\n      }\n      visionUsage = resp.usageMetadata || null;\n\n    } else {\n      // === GROQ PATH (images - unchanged, free, proven) ===\n      resp = await helpers.httpRequest({\n        method: 'POST',\n        url: 'https://api.groq.com/openai/v1/chat/completions',\n        headers: {\n          'Authorization': 'Bearer REPLACE_WITH_GROQ_API_KEY',\n          'Content-Type': 'application/json'\n        },\n        body: {\n          model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n          messages: [{\n            role: 'user',\n            content: [\n              { type: 'text', text: visionPrompt },\n              { type: 'image_url', image_url: { url: 'data:' + attachment.mimeType + ';base64,' + attachment.base64 } }\n            ]\n          }],\n          response_format: { type: 'json_object' },\n          temperature: 0.1,\n          max_tokens: 500\n        },\n        json: true\n      });\n      if (resp.choices && resp.choices[0]) {\n        const content = resp.choices[0].message.content || '';\n        try {\n          visionResult = JSON.parse(content);\n          visionStatus = 'success';\n          staticData.visionErrors = 0;\n        } catch (e) {\n          visionStatus = 'parse_error';\n          staticData.visionErrors++;\n        }\n      }\n      visionUsage = resp.usage || null;\n    }\n\n  } catch (e) {\n    visionStatus = isPdf ? 'gemini_api_error' : 'api_error';\n    visionResult = { error_message: e.message || String(e) };\n    staticData.visionErrors++;\n  }\n} else if (visionEligible && !rateLimitOK) {\n  visionStatus = 'rate_limited';\n} else if (visionEligible && !circuitBreakerOK) {\n  visionStatus = 'circuit_breaker';\n}\n\nreturn {\n  json: {\n    ...d,\n    _vision_result: visionResult,\n    _vision_status: visionStatus,\n    _vision_usage: visionUsage,\n    _vision_provider: isPdf ? 'gemini' : 'groq',\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "vision-process",
+      "name": "Vision Process",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "INTAKE: Manual Test (POST JSON)": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INTAKE: Outlook Mailbox (production)": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq AI Extract": {
+      "main": [
+        [
+          {
+            "node": "Vision Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Source": {
+      "main": [
+        [
+          {
+            "node": "Respond with Dashboard URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Outlook Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for AI v3": {
+      "main": [
+        [
+          {
+            "node": "Groq AI Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vision Process": {
+      "main": [
+        [
+          {
+            "node": "Employee List Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Parse & Validate v3": {
+      "main": [
+        [
+          {
+            "node": "Route by Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee List Extract": {
+      "main": [
+        [
+          {
+            "node": "AI Parse & Validate v3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
