@@ -359,16 +359,18 @@ textarea{resize:vertical;min-height:120px;}
 .csv-table tr:last-child td{border-bottom:none;}
 .csv-table tr:hover td{background:#f8faff;}
 
-/* KAN-34 #1,#2: eMoney demo view — hide all non-Dashboard nav.
-   (Supersedes earlier KAN-31 Option A. For demo the dashboard IS the workflow
-   — action buttons on ticket detail modal replace Finance Approval + E-Money Review pages.) */
+/* KAN-34 #1,#2 + Wave 3B: eMoney demo view — hide non-Dashboard nav EXCEPT Activity Log.
+   Dashboard + Activity Log are the two user-facing views.
+   Finance Approval + E-Money Review + Ticket List hidden (their functions are covered by
+   ticket detail modal action buttons + Dashboard). */
 body.emoney-view #nav-emails,
 body.emoney-view #nav-finance,
 body.emoney-view #nav-emoney,
 body.emoney-view .role-badge,
 body.emoney-view #role-select,
 body.emoney-view .nav-tag{display:none !important;}
-body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important;}  /* Only Dashboard button in mobile menu */
+/* Mobile menu: keep Dashboard (1st) + Activity Log (2nd), hide the rest */
+body.emoney-view .mobile-menu .nav-btn:nth-child(n+3){display:none !important;}
 
 @media(max-width:700px){
   .summary-row-5{grid-template-columns:1fr 1fr;}
@@ -396,6 +398,7 @@ body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important
   <div class="nav-logo"><span>W</span> Wave eMoney</div>
   <div class="nav-links">
     <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</button>
+    <button class="nav-btn" onclick="showPage('activity')" id="nav-activity">Activity Log</button>
     <button class="nav-btn" onclick="showPage('emails')" id="nav-emails">Ticket List</button>
     <button class="nav-btn" onclick="showPage('finance')" id="nav-finance">Finance Approval</button>
     <button class="nav-btn" onclick="showPage('emoney')" id="nav-emoney">E-Money Review</button>
@@ -419,6 +422,7 @@ body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important
 
 <div class="mobile-menu">
   <button class="nav-btn" onclick="showPage('dashboard');this.parentElement.classList.remove('open')">Dashboard</button>
+  <button class="nav-btn" onclick="showPage('activity');this.parentElement.classList.remove('open')">Activity Log</button>
   <button class="nav-btn" onclick="showPage('emails');this.parentElement.classList.remove('open')">Ticket List</button>
   <button class="nav-btn" onclick="showPage('finance');this.parentElement.classList.remove('open')">Finance Approval</button>
   <button class="nav-btn" onclick="showPage('emoney');this.parentElement.classList.remove('open')">E-Money Review</button>
@@ -426,6 +430,7 @@ body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important
 
 <main>
   <div class="page active" id="page-dashboard"></div>
+  <div class="page" id="page-activity"></div>
   <div class="page" id="page-emails"></div>
   <div class="page" id="page-finance"></div>
   <div class="page" id="page-emoney"></div>
@@ -1104,6 +1109,7 @@ function showPage(id){
   window.scrollTo(0,0);
 
   if(id==='dashboard') renderDashboard();
+  else if(id==='activity') renderActivity();
   else if(id==='emails') renderEmails();
   else if(id==='finance') renderFinance();
   else if(id==='emoney') renderEmoney();
@@ -1147,6 +1153,26 @@ function cycleRole(){
   const roles = ['Intake / Maker','Finance','E-Money'];
   const idx = roles.indexOf(state.currentRole);
   switchRole(roles[(idx+1)%roles.length]);
+}
+
+// ─── PAGE: ACTIVITY LOG ───────────────────────────────────────────────────────
+// Wave 3B: Activity Log moved from Dashboard to its own dedicated tab (Vinh verbal ask)
+
+function renderActivity(){
+  const el = document.getElementById('page-activity');
+  let html = `<div class="section-title">\uD83D\uDCCB Activity Log</div>`;
+  html += `<div class="section-sub" style="margin-bottom:20px;color:var(--muted);font-size:13px">All system actions on tickets \u2014 auto-created entries, status changes, approvals, returns to client.</div>`;
+  html += '<div class="card"><div class="card-body">';
+  if(state.activityLog.length === 0){
+    html += '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No activity yet. Actions will appear here as tickets are created and processed.</div>';
+  } else {
+    state.activityLog.forEach(e => {
+      const msg = e.message.replace(/(TKT-\d+)/g, '<a href="#" onclick="openTicketDetail(\'$1\');return false" style="color:var(--blue);font-weight:600;text-decoration:none">$1</a>');
+      html += `<div class="activity-entry"><span class="activity-time">[${e.time}]</span>${msg}</div>`;
+    });
+  }
+  html += '</div></div>';
+  el.innerHTML = html;
 }
 
 // ─── PAGE: DASHBOARD ──────────────────────────────────────────────────────────
@@ -1316,25 +1342,7 @@ function renderDashboard(){
     html += '</div>';
   }
 
-  // Activity log
-  html += '<div class="card"><div class="card-header"><div class="card-title">Activity Log</div></div><div class="card-body">';
-  if(state.activityLog.length === 0){
-    html += '<div style="color:var(--muted);font-size:13px">No activity yet.</div>';
-  } else {
-    state.activityLog.slice(0,5).forEach(e => {
-      const msg = e.message.replace(/(TKT-\d+)/g, '<a href="#" onclick="openTicketDetail(\'$1\');return false" style="color:var(--blue);font-weight:600;text-decoration:none">$1</a>');
-      html += `<div class="activity-entry"><span class="activity-time">[${e.time}]</span>${msg}</div>`;
-    });
-    if(state.activityLog.length > 5){
-      html += `<div class="expander-toggle" onclick="this.style.display='none';this.nextElementSibling.classList.add('open')">Show all ${state.activityLog.length} entries &#9662;</div><div class="expander-body">`;
-      state.activityLog.slice(5).forEach(e => {
-        const msg = e.message.replace(/(TKT-\d+)/g, '<a href="#" onclick="openTicketDetail(\'$1\');return false" style="color:var(--blue);font-weight:600;text-decoration:none">$1</a>');
-        html += `<div class="activity-entry"><span class="activity-time">[${e.time}]</span>${msg}</div>`;
-      });
-      html += '</div>';
-    }
-  }
-  html += '</div></div>';
+  // Wave 3B: Activity log moved to its own "Activity Log" tab (see renderActivity())
 
   el.innerHTML = html;
 
