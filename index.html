@@ -3036,17 +3036,16 @@ async function returnToClient(ticketId){
   showToast('Sending return email to ' + t.from_email + '...', 'info');
 
   try {
+    // Wave 3D bugfix: n8n webhook auto-wraps request body under $json.body — don't double-wrap here
     const resp = await fetch(RETURN_EMAIL_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        body: {
-          ticket_id: t.id,
-          from_email: t.from_email,
-          reason: reason.trim(),
-          company: t.company || 'Customer',
-          original_subject: t.original_subject || 'Disbursement Request'
-        }
+        ticket_id: t.id,
+        from_email: t.from_email,
+        reason: reason.trim(),
+        company: t.company || 'Customer',
+        original_subject: t.original_subject || 'Disbursement Request'
       })
     });
 
