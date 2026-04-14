@@ -453,7 +453,8 @@ body.emoney-view .mobile-menu .nav-btn:nth-child(n+3){display:none !important;}
 </div>
 
 <!-- Wave 3D-B: Return to Client preview modal (confirm before sending email) -->
-<div class="modal-overlay" id="return-preview-modal" onclick="if(event.target===this)closeReturnPreview()">
+<!-- z-index bumped to 250 (base modal-overlay = 200) so this stacks ABOVE the ticket detail modal -->
+<div class="modal-overlay" id="return-preview-modal" style="z-index:250" onclick="if(event.target===this)closeReturnPreview()">
   <div class="modal" style="max-width:640px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
       <h3 style="margin:0">Return to Client — Confirm before send</h3>
