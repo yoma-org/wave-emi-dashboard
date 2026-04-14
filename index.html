@@ -3332,7 +3332,10 @@ function openTicketDetail(ticketId){
 
   // KAN-36: Quick Actions row — Return to Client (red) + Generate CSV for Finance (green, gated)
   const alreadyApproved = t.finance_status === 'APPROVED';
-  const alreadyReturned = t.status === 'ASKED_CLIENT';
+  // v11.2: decouple the visual "Returned to client" banner from auto-ASKED_CLIENT
+  // status set by webhook.js on mismatch. Only treat as "actually returned" when
+  // the operator has clicked Return for Correction (which sets t.returned_at).
+  const alreadyReturned = !!t.returned_at;
   const hasSenderEmail = !!t.from_email;
   const k36 = kan36Completeness(t);
   const csvBtnTooltip = k36.complete
@@ -3389,8 +3392,12 @@ function openTicketDetail(ticketId){
   }
 
   // KAN-36: "Inform client for missing data" warning panel
-  // Shown when: NOT already returned/approved AND (missing fields OR amount mismatch)
-  if(!alreadyApproved && !alreadyReturned){
+  // v11.2 FIX: removed `!alreadyReturned` guard — webhook.js auto-sets status
+  // to ASKED_CLIENT on any mismatch, which was suppressing this panel exactly
+  // when Vinh's spec says it should appear (mismatch = one of the trigger
+  // conditions). Panel now shows whenever data incomplete OR mismatch, so long
+  // as CSV hasn't already been generated (alreadyApproved gate still honored).
+  if(!alreadyApproved){
     const k36w = kan36Completeness(t);
     if(k36w.missing.length > 0 || k36w.hasMismatch){
       html += '<div style="background:#fef3c7;border:2px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:16px">';
