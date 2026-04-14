@@ -30,10 +30,17 @@ ALTER TABLE tickets_v2
 -- ─── STEP 3: Recreate tickets_flat VIEW to expose the new columns ──────────
 -- Dashboard reads from this VIEW. Adding the fields here makes them
 -- automatically available via loadState() → state.tickets[id].
+--
+-- IMPORTANT: PostgreSQL CREATE OR REPLACE VIEW requires existing columns
+-- to stay in the SAME ORDER at the SAME POSITIONS. You can only APPEND new
+-- columns at the END. Attempting to insert new columns in the middle fails
+-- with "cannot change name of view column ... to ..." (error 42P16).
+-- Therefore we keep every existing column in its exact original position
+-- and append the 10 new KAN-35/36 columns at the END.
 
 CREATE OR REPLACE VIEW tickets_flat AS
 SELECT
-  -- Core (from tickets_v2)
+  -- Core (from tickets_v2) — ORIGINAL ORDER, DO NOT MODIFY
   t.id,
   t.ticket_number,
   t.company, t.type::text, t.currency,
@@ -54,37 +61,37 @@ SELECT
   t.n8n_source,
   t.created_at, t.updated_at,
 
-  -- KAN-35 / KAN-36 email-side fields (NEW — v11)
-  t.payment_date, t.payroll_period,
-  t.initiator_name, t.purpose, t.cost_center,
-
-  -- KAN-36 document-side mirror fields (NEW — v11)
-  t.doc_company_name, t.doc_payment_date,
-  t.doc_initiator_name, t.doc_purpose, t.doc_cost_center,
-
-  -- Email (latest email per ticket)
+  -- Email (latest email per ticket) — ORIGINAL ORDER
   e.source_email_id, e.from_email, e.to_email, e.cc_emails,
   e.reply_to, e.email_date, e.message_id, e.thread_id,
   e.original_subject, e.body_preview, e.email_body_full,
   e.has_attachments, e.attachment_names, e.attachment_count,
   e.n8n_parsed_at,
 
-  -- Attachment (latest attachment per ticket)
+  -- Attachment (latest attachment per ticket) — ORIGINAL ORDER
   a.storage_url AS attachment_url,
   a.mime_type AS attachment_mime_type,
   a.file_name AS attachment_file_name,
 
-  -- Vision (latest vision result per ticket)
+  -- Vision (latest vision result per ticket) — ORIGINAL ORDER
   v.vision_parsed, v.vision_confidence, v.vision_status,
   v.document_type, v.document_signers,
 
-  -- Employee extraction (latest extraction per ticket)
+  -- Employee extraction (latest extraction per ticket) — ORIGINAL ORDER
   x.extracted_employees,
   x.employee_count AS extracted_employee_count,
   x.confidence AS employee_extraction_confidence,
   x.status AS employee_extraction_status,
   x.total_amount AS employee_total_extracted,
-  x.amount_mismatch AS employee_amount_mismatch
+  x.amount_mismatch AS employee_amount_mismatch,
+
+  -- ─── APPENDED v11 KAN-35 / KAN-36 columns (NEW) ─────────────────────────
+  -- These MUST stay at the end so CREATE OR REPLACE VIEW doesn't reject.
+  -- If you ever add more columns in the future, APPEND after these.
+  t.payment_date, t.payroll_period,
+  t.initiator_name, t.purpose, t.cost_center,
+  t.doc_company_name, t.doc_payment_date,
+  t.doc_initiator_name, t.doc_purpose, t.doc_cost_center
 
 FROM tickets_v2 t
 LEFT JOIN LATERAL (
