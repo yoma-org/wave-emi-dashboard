@@ -2902,6 +2902,59 @@ function renderAIPipelineSection(t){
   return html;
 }
 
+// Wave 3E: generate CSV string from ticket's extracted_employees (UTF-8 BOM for Excel Myanmar text compatibility)
+function generateEmployeeCSV(t){
+  const employees = t.extracted_employees || [];
+  if(employees.length === 0) return null;
+  const rows = [['Name', 'Phone/Account', 'Amount (MMK)']];
+  let total = 0;
+  employees.forEach(function(e){
+    const name = (e.name || '').replace(/"/g, '""');
+    const phone = (e.account_or_phone || e.phone || e.msisdn || '').toString().replace(/"/g, '""');
+    const amount = parseInt(e.amount || 0, 10) || 0;
+    total += amount;
+    rows.push([`"${name}"`, `"${phone}"`, amount.toString()]);
+  });
+  rows.push(['TOTAL', '', total.toString()]);
+  const csv = rows.map(r => r.join(',')).join('\r\n');
+  return '\ufeff' + csv;  // UTF-8 BOM prefix
+}
+
+// Wave 3E: trigger browser download + update ticket to APPROVED status
+function approveAndDownloadCSV(ticketId){
+  const t = state.tickets[ticketId];
+  if(!t) return;
+  const employees = t.extracted_employees || [];
+  if(employees.length === 0){
+    showToast('No employee list available to download. Upload manually or wait for vision extraction.', 'warning');
+    return;
+  }
+  const csv = generateEmployeeCSV(t);
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = t.id + '_employees.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Update ticket state: mark as approved + prechecks done
+  t.finance_status = 'APPROVED';
+  t.prechecks_done = true;
+  t.approved_at = new Date().toISOString();
+  state._lastSavedTicketId = t.id;
+  saveState();
+  logActivity(t.id + ' approved by operator \u00b7 Employee CSV downloaded (' + employees.length + ' employees)');
+
+  showToast(t.id + ' approved + CSV downloaded (' + employees.length + ' employees)', 'success');
+
+  // Close modal + re-render dashboard
+  document.getElementById('ticket-detail-modal').classList.remove('open');
+  renderDashboard();
+}
+
 function openTicketDetail(ticketId){
   const t = state.tickets[ticketId];
   if(!t) return;
@@ -2921,6 +2974,22 @@ function openTicketDetail(ticketId){
     </div>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ticket-detail-modal').classList.remove('open')" style="font-size:20px;padding:4px 8px">&times;</button>
   </div>`;
+
+  // Wave 3E: Quick Actions row — Approve & Download CSV (Return to Client added in 3D)
+  const alreadyApproved = t.finance_status === 'APPROVED';
+  const alreadyReturned = t.status === 'ASKED_CLIENT';
+  const hasEmployees = (t.extracted_employees || []).length > 0;
+  if(!alreadyApproved && !alreadyReturned){
+    html += `<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="approveAndDownloadCSV('${t.id}')" title="${hasEmployees ? 'Approve ticket + download employee CSV for Finance' : 'No employee list extracted yet — cannot download CSV'}" ${hasEmployees ? '' : 'disabled'}>
+        \u2713 Approve &amp; Download CSV${hasEmployees ? ' (' + (t.extracted_employees || []).length + ' employees)' : ''}
+      </button>
+    </div>`;
+  } else if(alreadyApproved){
+    html += `<div style="padding:10px 14px;margin-bottom:16px;background:#dcfce7;color:#166534;border-radius:8px;font-size:13px;font-weight:600">\u2713 Approved by operator${t.approved_at ? ' on ' + new Date(t.approved_at).toLocaleString() : ''}. Employee CSV already downloaded.</div>`;
+  } else if(alreadyReturned){
+    html += `<div style="padding:10px 14px;margin-bottom:16px;background:#fef3c7;color:#92400e;border-radius:8px;font-size:13px;font-weight:600">\u21A9 Returned to client${t.returned_at ? ' on ' + new Date(t.returned_at).toLocaleString() : ''}. Awaiting client correction.${t.return_reason ? '<div style=\"margin-top:6px;font-weight:400\">Reason: ' + t.return_reason + '</div>' : ''}</div>`;
+  }
 
   // Amount Verification — ALWAYS VISIBLE (core value signal per DeepSeek council)
   if(t.n8n_source||t.ai_parsed){
