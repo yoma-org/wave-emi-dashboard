@@ -1,0 +1,112 @@
+{
+  "name": "EMI Return-to-Client Email v1",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Return-to-Client Email Sender\n\n**Purpose:** Fired manually from dashboard when an operator decides a ticket needs to go back to the client for correction (mismatch, missing data, or bad AI extraction).\n\n**Design principle:** Human-in-the-loop. Operator reviews ticket, clicks 'Return to Client' in dashboard, enters a reason. This workflow sends the email.\n\n**Why separate from main pipeline (v10.1):**\n- Main pipeline = inbound email intake + ticket creation\n- This workflow = outbound operator-triggered email\n- Separate concerns = independent evolution + easier rollback\n\n**Payload contract** (POST /webhook/return-to-client):\n```\n{\n  \"ticket_id\": \"TKT-024\",\n  \"from_email\": \"client@example.com\",\n  \"reason\": \"Operator's explanation for return\",\n  \"company\": \"Company Name Ltd\",\n  \"original_subject\": \"Original email subject\"\n}\n```\n\n**Response (success):** `{\"success\": true, \"message\": \"Return email sent\", \"ticket_id\": \"TKT-024\"}`\n\n**Credentials:** Reuses same Outlook OAuth as v10.1 (emoney@zeyalabs.ai).",
+        "height": 380,
+        "width": 480
+      },
+      "id": "sticky-note-return-arch",
+      "name": "Return Email Architecture Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -150,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "return-to-client",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-return-trigger",
+      "name": "RETURN: Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        440,
+        400
+      ],
+      "webhookId": "return-to-client"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "={{ $json.body.from_email }}",
+        "subject": "=Re: {{ $json.body.original_subject || 'Disbursement Request' }} — Action Required ({{ $json.body.ticket_id }})",
+        "bodyContent": "=\u270B Disbursement Request — Action Required\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\uD83C\uDFAB  Ticket ID: {{ $json.body.ticket_id }}\n\uD83C\uDFE2  Company:   {{ $json.body.company }}\n\nDear {{ $json.body.company }} team,\n\nThank you for submitting your disbursement request. After review by our operations team, we need you to correct the following before we can proceed with processing.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u26A0\uFE0F  Reason for return:\n\n{{ $json.body.reason }}\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u27A1\uFE0F  Next Steps:\n\n1. Review the reason above\n2. Make the necessary corrections to your request\n3. Resubmit the corrected disbursement request to emoney@zeyalabs.ai\n4. Reference the Ticket ID ({{ $json.body.ticket_id }}) in your resubmission for faster processing\n\nIf you need clarification or have questions about the feedback, please reply directly to this email.\n\nThank you for your cooperation.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nBest regards,\nWave Money | E-Money Operations\nemoney@zeyalabs.ai",
+        "options": {
+          "ccRecipients": "emoney@zeyalabs.ai"
+        }
+      },
+      "id": "send-return-email",
+      "name": "Send Return Email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        740,
+        400
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_OUTLOOK_CREDENTIAL_ID",
+          "name": "Outlook (emoney@zeyalabs.ai)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Return email sent', ticket_id: $('RETURN: Webhook Trigger').first().json.body.ticket_id, to: $('RETURN: Webhook Trigger').first().json.body.from_email }) }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "RETURN: Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Return Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Return Email": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "return-email-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "emi-return-email-v1",
+  "tags": []
+}
