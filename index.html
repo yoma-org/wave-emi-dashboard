@@ -481,6 +481,8 @@ const LS_PARSED = 'emi_parsed';
 const LS_ROLE = 'emi_role';
 const LS_FILTER = 'emi_active_filter';
 const LS_SEARCH = 'emi_search_query';
+const LS_ACTIVITY_PAGE = 'emi_activity_page';      // Wave 3F: activity log pagination
+const LS_ACTIVITY_SEARCH = 'emi_activity_search';  // Wave 3F: activity log search
 
 // ─── SUPABASE CLIENT ────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://dicluyfkfqlqjwqikznl.supabase.co';
@@ -541,8 +543,11 @@ let state = {
   activeFilter: 'all',   // KAN-31 #6: 'all' | 'mismatch' | 'finance'
   searchQuery: '',       // KAN-31 #7: ticket ID search
   currentPage: 1,        // KAN-34 verbal #B: dashboard pagination (10 per page)
+  activityPage: 1,       // Wave 3F: activity log pagination
+  activitySearchQuery: '',  // Wave 3F: activity log search
 };
-const DASHBOARD_PAGE_SIZE = 10;  // KAN-34 verbal #B: tickets per page on dashboard
+const DASHBOARD_PAGE_SIZE = 10;     // KAN-34 verbal #B: tickets per page on dashboard
+const ACTIVITY_PAGE_SIZE = 20;      // Wave 3F: activity entries per page (smaller rows → show more)
 // Runtime-only storage for bank slip image data URLs (not persisted to localStorage)
 const slipDataUrls = {};
 // Runtime storage for processed employee data before save
@@ -690,6 +695,8 @@ function saveState(){
     localStorage.setItem(LS_ROLE, state.currentRole);
     localStorage.setItem(LS_FILTER, state.activeFilter || 'all');
     localStorage.setItem(LS_SEARCH, state.searchQuery || '');
+    localStorage.setItem(LS_ACTIVITY_PAGE, String(state.activityPage || 1));
+    localStorage.setItem(LS_ACTIVITY_SEARCH, state.activitySearchQuery || '');
   } catch(e){ /* non-blocking */ }
   // Supabase dual-write to tickets_v2 (non-blocking)
   if(sb){
@@ -771,6 +778,10 @@ async function loadState(){
     if(f) state.activeFilter = f;
     const sq = localStorage.getItem(LS_SEARCH);
     if(sq !== null) state.searchQuery = sq;
+    const ap = localStorage.getItem(LS_ACTIVITY_PAGE);
+    if(ap) state.activityPage = parseInt(ap, 10) || 1;
+    const asq = localStorage.getItem(LS_ACTIVITY_SEARCH);
+    if(asq !== null) state.activitySearchQuery = asq;
   } catch(e){ /* non-blocking */ }
 }
 
@@ -1157,21 +1168,94 @@ function cycleRole(){
 
 // ─── PAGE: ACTIVITY LOG ───────────────────────────────────────────────────────
 // Wave 3B: Activity Log moved from Dashboard to its own dedicated tab (Vinh verbal ask)
+// Wave 3F: + pagination (20/page) + search (ticket ID or message text)
+
+function setActivityPage(page){
+  state.activityPage = Math.max(1, page);
+  saveState();
+  renderActivity();
+  const el = document.querySelector('#page-activity .card');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function handleActivitySearchInput(value){
+  state.activitySearchQuery = value;
+  state.activityPage = 1;  // reset to page 1 on search change
+  saveState();
+  renderActivity();
+  setTimeout(function(){
+    const input = document.getElementById('activity-search');
+    if(input){
+      input.focus();
+      try { input.setSelectionRange(value.length, value.length); } catch(e){}
+    }
+  }, 0);
+}
+
+function clearActivityFilters(){
+  state.activitySearchQuery = '';
+  state.activityPage = 1;
+  saveState();
+  renderActivity();
+}
 
 function renderActivity(){
   const el = document.getElementById('page-activity');
+  const searchQuery = (state.activitySearchQuery || '').toLowerCase();
+
+  // Wave 3F: filter by search (matches ticket ID OR message body, case-insensitive)
+  let filtered = state.activityLog;
+  if(searchQuery){
+    filtered = filtered.filter(e => (e.message || '').toLowerCase().includes(searchQuery));
+  }
+
+  // Wave 3F: paginate
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ACTIVITY_PAGE_SIZE));
+  let currentPage = Math.min(state.activityPage || 1, totalPages);
+  if(currentPage < 1) currentPage = 1;
+  const pageStart = (currentPage - 1) * ACTIVITY_PAGE_SIZE;
+  const pageEnd = pageStart + ACTIVITY_PAGE_SIZE;
+  const paged = filtered.slice(pageStart, pageEnd);
+
   let html = `<div class="section-title">\uD83D\uDCCB Activity Log</div>`;
   html += `<div class="section-sub" style="margin-bottom:20px;color:var(--muted);font-size:13px">All system actions on tickets \u2014 auto-created entries, status changes, approvals, returns to client.</div>`;
-  html += '<div class="card"><div class="card-body">';
+
+  // Card header with search bar
+  html += `<div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="card-title">Activity Entries${state.activityLog.length > 0 ? ' ('+state.activityLog.length+' total)' : ''}</div>
+      <input type="text" id="activity-search" placeholder="\uD83D\uDD0D Search TKT-ID or message..." value="${(state.activitySearchQuery || '').replace(/"/g,'&quot;')}" oninput="handleActivitySearchInput(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:260px;max-width:100%"/>
+    </div>`;
+
   if(state.activityLog.length === 0){
-    html += '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No activity yet. Actions will appear here as tickets are created and processed.</div>';
+    html += '<div class="card-body"><div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No activity yet. Actions will appear here as tickets are created and processed.</div></div>';
+  } else if(paged.length === 0){
+    // Filtered to empty but entries exist
+    html += `<div class="card-body"><div class="empty-state" style="padding:40px 20px"><div class="empty-state-icon">\uD83D\uDD0D</div><h3>No activity matches your search</h3><p>Try different keywords or clear the search.</p><button class="btn btn-primary" onclick="clearActivityFilters()">Clear search</button></div></div>`;
   } else {
-    state.activityLog.forEach(e => {
+    html += '<div class="card-body">';
+    paged.forEach(e => {
       const msg = e.message.replace(/(TKT-\d+)/g, '<a href="#" onclick="openTicketDetail(\'$1\');return false" style="color:var(--blue);font-weight:600;text-decoration:none">$1</a>');
       html += `<div class="activity-entry"><span class="activity-time">[${e.time}]</span>${msg}</div>`;
     });
+    html += '</div>';
+    // Pagination controls
+    if(totalPages > 1){
+      const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+      const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+      const rangeStart = pageStart + 1;
+      const rangeEnd = Math.min(pageEnd, filtered.length);
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)">
+        <div>Showing <strong>${rangeStart}\u2013${rangeEnd}</strong> of <strong>${filtered.length}</strong>${searchQuery ? ' matching' : ''} entries</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn" onclick="setActivityPage(${currentPage-1})" ${prevDisabled} style="padding:6px 12px;font-size:12px">\u2190 Prev</button>
+          <span style="padding:0 8px">Page <strong>${currentPage}</strong> / ${totalPages}</span>
+          <button class="btn" onclick="setActivityPage(${currentPage+1})" ${nextDisabled} style="padding:6px 12px;font-size:12px">Next \u2192</button>
+        </div>
+      </div>`;
+    }
   }
-  html += '</div></div>';
+  html += '</div>';
   el.innerHTML = html;
 }
 
