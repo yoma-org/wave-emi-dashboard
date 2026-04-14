@@ -206,7 +206,7 @@ textarea{resize:vertical;min-height:120px;}
 /* GRID */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.section-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+.section-title{font-size:18px;font-weight:700;margin-bottom:20px;}  /* KAN-34 #3: spacing below Dashboard title */
 .section-sub{font-size:14px;color:var(--muted);margin-bottom:20px;}
 
 /* SLIP PREVIEW */
@@ -359,12 +359,16 @@ textarea{resize:vertical;min-height:120px;}
 .csv-table tr:last-child td{border-bottom:none;}
 .csv-table tr:hover td{background:#f8faff;}
 
-/* KAN-31 #2: eMoney simplified view — hide redundant Ticket List only.
-   Finance Approval + E-Money Review stay visible (workflow stations — Finance needs
-   approval queue, E-Money team needs Utiba CSV prep / checker / mapping / monitoring / closing).
-   Role badge stays visible (needed for role switching in demo mode). */
-body.emoney-view #nav-emails{display:none !important;}
-body.emoney-view .mobile-menu .nav-btn:nth-child(2){display:none !important;}  /* Ticket List is 2nd button in mobile menu */
+/* KAN-34 #1,#2: eMoney demo view — hide all non-Dashboard nav.
+   (Supersedes earlier KAN-31 Option A. For demo the dashboard IS the workflow
+   — action buttons on ticket detail modal replace Finance Approval + E-Money Review pages.) */
+body.emoney-view #nav-emails,
+body.emoney-view #nav-finance,
+body.emoney-view #nav-emoney,
+body.emoney-view .role-badge,
+body.emoney-view #role-select,
+body.emoney-view .nav-tag{display:none !important;}
+body.emoney-view .mobile-menu .nav-btn:not(:first-child){display:none !important;}  /* Only Dashboard button in mobile menu */
 
 @media(max-width:700px){
   .summary-row-5{grid-template-columns:1fr 1fr;}
@@ -1145,6 +1149,24 @@ function cycleRole(){
 
 // ─── PAGE: DASHBOARD ──────────────────────────────────────────────────────────
 
+// KAN-34 #6+#7: simplified status/risk helpers — collapse many underlying values to 2 labels
+// "Has issue" = has amount mismatch OR missing required approvals OR ASKED_CLIENT status
+function hasTicketIssue(t){
+  return !!(t.has_mismatch || !t.approval_matrix_complete || t.scenario === 'AMOUNT_MISMATCH' || t.scenario === 'MISSING_APPROVAL' || t.status === 'ASKED_CLIENT');
+}
+function simplifiedStatusBadge(t){
+  if(hasTicketIssue(t)){
+    return '<span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600">Asked Client</span>';
+  }
+  return '<span style="background:#dcfce7;color:#166534;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600">Ready for Finance</span>';
+}
+function simplifiedRiskBadge(t){
+  if(hasTicketIssue(t)){
+    return '<span style="background:#fee2e2;color:#dc2626;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600">High</span>';
+  }
+  return '<span style="background:#dcfce7;color:#166534;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600">Low</span>';
+}
+
 // KAN-31 #6: toggle card filter (clicking same card again clears it)
 function setCardFilter(filter){
   state.activeFilter = (state.activeFilter === filter) ? 'all' : filter;
@@ -1178,17 +1200,20 @@ function clearDashboardFilters(){
 function renderDashboard(){
   const el = document.getElementById('page-dashboard');
   const allT = allTickets();
-  // KAN-31 #5: 3 stat cards (replaces 5 — New Emails / Pending / Ready / Processing / Completed)
+  // KAN-31 #5 + KAN-34 #6/#7: 3 stat cards using unified hasTicketIssue() logic
+  // Mismatch card = tickets with ANY issue (mismatch OR missing approval)
+  // Ready for Finance card = tickets with NO issues (clean + correct)
+  // Cards are mutually exclusive and sum to All Emails
   const allEmails = allT.length;
-  const mismatches = allT.filter(t=>t.has_mismatch || t.scenario==='AMOUNT_MISMATCH').length;
-  const readyForFinance = allT.filter(t=>t.status==='PENDING_FINANCE' || t.status==='AWAITING_EMPLOYEE_LIST').length;
+  const mismatches = allT.filter(t=>hasTicketIssue(t)).length;
+  const readyForFinance = allT.filter(t=>!hasTicketIssue(t)).length;
   const activeFilter = state.activeFilter || 'all';
   const searchQuery = state.searchQuery || '';
 
-  // KAN-31 #6+#7: filter ticket list by active card + search query
+  // KAN-31 #6+#7: filter ticket list by active card + search query (aligned with hasTicketIssue)
   let filteredT = allT;
-  if(activeFilter === 'mismatch') filteredT = filteredT.filter(t=>t.has_mismatch || t.scenario==='AMOUNT_MISMATCH');
-  else if(activeFilter === 'finance') filteredT = filteredT.filter(t=>t.status==='PENDING_FINANCE' || t.status==='AWAITING_EMPLOYEE_LIST');
+  if(activeFilter === 'mismatch') filteredT = filteredT.filter(t=>hasTicketIssue(t));
+  else if(activeFilter === 'finance') filteredT = filteredT.filter(t=>!hasTicketIssue(t));
   if(searchQuery) filteredT = filteredT.filter(t=>(t.id||'').toLowerCase().includes(searchQuery.toLowerCase()));
   const tickets = sortTickets(filteredT, sortColumn, sortDirection);
 
@@ -1222,8 +1247,8 @@ function renderDashboard(){
         <input type="text" id="ticket-search" placeholder="\uD83D\uDD0D Search ticket ID..." value="${searchQuery.replace(/"/g,'&quot;')}" oninput="handleSearchInput(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:220px;max-width:100%"/>
       </div>
       <div class="table-scroll"><table class="ticket-table"><thead><tr>
-        ${sortHeader('ID','id')}${sortHeader('Created','created_at')}${sortHeader('Company','company')}<th>Type</th>${sortHeader('Amount','amount_requested')}
-        <th>Vision</th><th>Track A</th><th>Track B</th>${sortHeader('Status','status')}${sortHeader('Risk','risk_level')}
+        ${sortHeader('ID','id')}${sortHeader('Company','company')}<th>Type</th>${sortHeader('Amount','amount_requested')}
+        <th>Vision</th>${sortHeader('Status','status')}${sortHeader('Risk','risk_level')}
       </tr></thead><tbody>`;
     tickets.forEach(t => {
       const trackA = t.prechecks_done ? '<span style="color:#16a34a;font-weight:600">\u2705 Done</span>' : '<span style="color:#856404;font-weight:600">\u23F3 Pending</span>';
@@ -1241,11 +1266,12 @@ function renderDashboard(){
       } else if(t.vision_status && t.vision_status !== 'none'){
         visionCol = `<span style="color:#dc2626;font-size:11px">${t.vision_status}</span>`;
       }
+      // KAN-34 #4,#5,#6,#7: removed Created + Track A + Track B columns; simplified status + risk badges
       html += `<tr onclick="openTicketDetail('${t.id}')" style="cursor:pointer">
-        <td><a href="#" onclick="openTicketDetail('${t.id}');event.stopPropagation();return false" style="color:var(--blue);text-decoration:none"><strong>${t.id}</strong></a>${n8nBadge}</td><td style="font-size:12px;color:var(--muted);white-space:nowrap" title="${t.created_at||''}">${fmtTime(t.created_at)}</td><td>${t.company}</td><td>${typeBadgeHtml(t.type)}</td>
+        <td><a href="#" onclick="openTicketDetail('${t.id}');event.stopPropagation();return false" style="color:var(--blue);text-decoration:none"><strong>${t.id}</strong></a>${n8nBadge}</td><td>${t.company}</td><td>${typeBadgeHtml(t.type)}</td>
         <td style="font-weight:700">${fmt(t.amount_requested)} MMK</td>
-        <td>${visionCol}</td><td>${trackA}</td><td>${trackB}</td>
-        <td>${statusBadgeHtml(t.status)}</td><td>${riskBadgeHtml(t.risk_level)}</td>
+        <td>${visionCol}</td>
+        <td>${simplifiedStatusBadge(t)}</td><td>${simplifiedRiskBadge(t)}</td>
       </tr>`;
     });
     html += '</tbody></table></div></div>';
