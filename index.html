@@ -3297,45 +3297,55 @@ function openTicketDetail(ticketId){
     </div>`;
   }
 
-  // Employee List — COLLAPSED but with upload+submit (Vinh: Dashboard should do everything)
+  // KAN-36: Employee List — 4-column rework for MA, hide-with-note for OTC
   if(t.n8n_source||t.ai_parsed){
-    const hasEmployees = (t.extracted_employees && t.extracted_employees.length > 0) || (t.employee_data && t.employee_data.length > 0);
+    const isOTC = t.payment_type === 'salarytoOTC';
     const empData = t.extracted_employees || t.employee_data || [];
-    const empLabel = hasEmployees ? 'Employee List ('+empData.length+' employees)' : 'Employee List';
-    html += '<div class="section-collapsible'+(hasEmployees?' open':'')+'"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">'+empLabel+'</div><div class="section-body">';
-    if(hasEmployees){
-      // Show extracted employee table
-      const empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
-      if(empConf) html += '<div style="margin-bottom:8px"><span class="badge badge-purple">Auto-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Extraction: '+empConf+'%</span></div>';
-      html += '<div style="max-height:250px;overflow-y:auto"><table class="csv-table"><thead><tr><th>Name</th><th>Phone/Acct</th><th>Amount</th></tr></thead><tbody>';
-      empData.forEach(function(e){
-        const name = e.name || e.Cleaned_Name || e.Original_Name || '';
-        const phone = e.account_or_phone || e.MSISDN || e.phone || '';
-        const amt = e.amount || e.Amount || 0;
-        html += '<tr><td>'+name+'</td><td>'+phone+'</td><td>'+fmt(amt)+'</td></tr>';
-      });
-      html += '</tbody></table></div>';
+    const hasEmployees = empData.length > 0;
+
+    if(isOTC && !hasEmployees){
+      // OTC convention: no employee list expected. Show a compact note instead of empty table.
+      html += '<div class="section-collapsible open"><div class="section-toggle">Employee List</div><div class="section-body">';
+      html += '<div style="padding:10px 14px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;color:#3730a3;font-size:13px">\uD83D\uDDC3\uFE0F <strong>OTC ticket</strong> — Over-The-Counter disbursements typically do not include an employee list inside the payroll attachment. This is expected, not an error.</div>';
+      html += '</div></div>';
+    } else {
+      // MA path (or OTC with unexpected employee list): 4-column table per KAN-36 spec
+      const empLabel = hasEmployees ? 'Employee List ('+empData.length+' employees)' : 'Employee List';
+      html += '<div class="section-collapsible'+(hasEmployees?' open':'')+'"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">'+empLabel+'</div><div class="section-body">';
+      if(hasEmployees){
+        const empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
+        if(empConf) html += '<div style="margin-bottom:8px"><span class="badge badge-purple">Auto-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Extraction: '+empConf+'%</span></div>';
+        // KAN-36 4-column spec: SI No | From Wallet | To Wallet | eMoney Amount
+        const fromWallet = t.company || t.depositor_name || '—';
+        html += '<div style="max-height:280px;overflow-y:auto"><table class="csv-table"><thead><tr><th style="width:48px">SI No</th><th title="Source wallet — displays depositor/company name until corporate wallet ID lookup is implemented">From Wallet</th><th>To Wallet</th><th style="text-align:right">eMoney Amount</th></tr></thead><tbody>';
+        empData.forEach(function(e, idx){
+          const phone = e.account_or_phone || e.MSISDN || e.phone || '';
+          const amt = e.amount || e.Amount || 0;
+          html += '<tr><td>'+(idx+1)+'</td><td>'+fromWallet+'</td><td>'+phone+'</td><td style="text-align:right">'+fmt(amt)+' MMK</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+      // 3-way Amount Check (reuse reconcileAmounts) — kept for MA operators verifying totals
+      if(hasEmployees){
+        const empForReconcile = empData.map(function(e){ return {Amount: e.amount||e.Amount||0}; });
+        const recChecks = reconcileAmounts(t, empForReconcile);
+        html += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:13px;display:block;margin-bottom:8px">Amount Check</strong>';
+        recChecks.forEach(function(chk){ html += '<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>'; });
+        html += '</div>';
+      }
+      // Upload zone — kept so operator can replace/augment extracted list
+      if(!t.prechecks_done){
+        const modalEid = 'modal-'+t.id;
+        html += '<div id="emp-preview-'+modalEid+'"></div>';
+        html += '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
+        html += '<button class="btn btn-primary" id="submit-btn-'+modalEid+'" onclick="submitTicketFromModal(\''+t.id+'\',\''+modalEid+'\')"'+(hasEmployees?'':' disabled')+'>Save &amp; Submit for Finance</button>';
+        html += '<label class="btn btn-outline" style="cursor:pointer;position:relative;overflow:hidden" id="emp-zone-'+modalEid+'">';
+        html += '<input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg,.pdf" onchange="handleEmployeeUpload(this,\''+modalEid+'\',\''+t.id+'\')" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer"/>';
+        html += '&#128196; Upload Employee List</label>';
+        html += '</div>';
+      }
+      html += '</div></div>';
     }
-    // 3-way Amount Check (reuse reconcileAmounts)
-    if(hasEmployees){
-      const empForReconcile = empData.map(function(e){ return {Amount: e.amount||e.Amount||0}; });
-      const recChecks = reconcileAmounts(t, empForReconcile);
-      html += '<div class="amounts-check" style="margin-top:12px"><strong style="font-size:13px;display:block;margin-bottom:8px">Amount Check</strong>';
-      recChecks.forEach(function(chk){ html += '<div class="ac-row"><span class="ac-icon">'+reconcileIcon(chk.status)+'</span><span class="ac-label">'+chk.check+'</span><span class="ac-detail">'+chk.detail+'</span></div>'; });
-      html += '</div>';
-    }
-    // Upload zone — always show (user can upload/replace)
-    if(!t.prechecks_done){
-      const modalEid = 'modal-'+t.id;
-      html += '<div id="emp-preview-'+modalEid+'"></div>';
-      html += '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-      html += '<button class="btn btn-primary" id="submit-btn-'+modalEid+'" onclick="submitTicketFromModal(\''+t.id+'\',\''+modalEid+'\')"'+(hasEmployees?'':' disabled')+'>Save &amp; Submit for Finance</button>';
-      html += '<label class="btn btn-outline" style="cursor:pointer;position:relative;overflow:hidden" id="emp-zone-'+modalEid+'">';
-      html += '<input type="file" accept=".csv,.xlsx,.png,.jpg,.jpeg,.pdf" onchange="handleEmployeeUpload(this,\''+modalEid+'\',\''+t.id+'\')" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer"/>';
-      html += '&#128196; Upload Employee List</label>';
-      html += '</div>';
-    }
-    html += '</div></div>';
   }
 
   // AI Analysis — COLLAPSED by default (technical detail, one click away)
