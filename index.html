@@ -535,7 +535,9 @@ let state = {
   currentRole: 'Intake / Maker',
   activeFilter: 'all',   // KAN-31 #6: 'all' | 'mismatch' | 'finance'
   searchQuery: '',       // KAN-31 #7: ticket ID search
+  currentPage: 1,        // KAN-34 verbal #B: dashboard pagination (10 per page)
 };
+const DASHBOARD_PAGE_SIZE = 10;  // KAN-34 verbal #B: tickets per page on dashboard
 // Runtime-only storage for bank slip image data URLs (not persisted to localStorage)
 const slipDataUrls = {};
 // Runtime storage for processed employee data before save
@@ -1170,6 +1172,7 @@ function simplifiedRiskBadge(t){
 // KAN-31 #6: toggle card filter (clicking same card again clears it)
 function setCardFilter(filter){
   state.activeFilter = (state.activeFilter === filter) ? 'all' : filter;
+  state.currentPage = 1;  // KAN-34 verbal #B: reset to page 1 on filter change
   saveState();
   renderDashboard();
 }
@@ -1177,6 +1180,7 @@ function setCardFilter(filter){
 // KAN-31 #7: live search on ticket ID
 function handleSearchInput(value){
   state.searchQuery = value;
+  state.currentPage = 1;  // KAN-34 verbal #B: reset to page 1 on search change
   saveState();
   renderDashboard();
   // Restore focus + caret position after re-render (innerHTML wipes focus)
@@ -1193,8 +1197,19 @@ function handleSearchInput(value){
 function clearDashboardFilters(){
   state.activeFilter = 'all';
   state.searchQuery = '';
+  state.currentPage = 1;
   saveState();
   renderDashboard();
+}
+
+// KAN-34 verbal #B: dashboard pagination — go to specific page
+function setDashboardPage(page){
+  state.currentPage = Math.max(1, page);
+  saveState();
+  renderDashboard();
+  // Scroll to top of ticket table so user sees the new page
+  const el = document.querySelector('#page-dashboard .ticket-table');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function renderDashboard(){
@@ -1215,7 +1230,15 @@ function renderDashboard(){
   if(activeFilter === 'mismatch') filteredT = filteredT.filter(t=>hasTicketIssue(t));
   else if(activeFilter === 'finance') filteredT = filteredT.filter(t=>!hasTicketIssue(t));
   if(searchQuery) filteredT = filteredT.filter(t=>(t.id||'').toLowerCase().includes(searchQuery.toLowerCase()));
-  const tickets = sortTickets(filteredT, sortColumn, sortDirection);
+  const sortedT = sortTickets(filteredT, sortColumn, sortDirection);
+
+  // KAN-34 verbal #B: paginate to DASHBOARD_PAGE_SIZE per page (default 10)
+  const totalPages = Math.max(1, Math.ceil(sortedT.length / DASHBOARD_PAGE_SIZE));
+  let currentPage = Math.min(state.currentPage || 1, totalPages);
+  if(currentPage < 1) currentPage = 1;
+  const pageStart = (currentPage - 1) * DASHBOARD_PAGE_SIZE;
+  const pageEnd = pageStart + DASHBOARD_PAGE_SIZE;
+  const tickets = sortedT.slice(pageStart, pageEnd);
 
   let html = `
     <div class="section-title">\uD83C\uDF0A eMoney Dashboard</div>
@@ -1255,7 +1278,7 @@ function renderDashboard(){
       let trackB = '<span style="color:#856404;font-weight:600">\u23F3 Pending</span>';
       if(t.finance_status==='APPROVED') trackB = '<span style="color:#16a34a;font-weight:600">\u2705 Approved</span>';
       else if(t.finance_status==='REJECTED') trackB = '<span style="color:#dc2626;font-weight:600">\u274C Rejected</span>';
-      const n8nBadge = t.n8n_source ? ' <span style="background:#FF6D5A;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">Auto</span>' : '';
+      // KAN-34 verbal #A: Auto badge removed from dashboard per Vinh
       let visionCol = '<span style="color:#94a3b8;font-size:12px">—</span>';
       if(t.vision_parsed){
         const conf = (t.vision_confidence*100).toFixed(0);
@@ -1268,13 +1291,29 @@ function renderDashboard(){
       }
       // KAN-34 #4,#5,#6,#7: removed Created + Track A + Track B columns; simplified status + risk badges
       html += `<tr onclick="openTicketDetail('${t.id}')" style="cursor:pointer">
-        <td><a href="#" onclick="openTicketDetail('${t.id}');event.stopPropagation();return false" style="color:var(--blue);text-decoration:none"><strong>${t.id}</strong></a>${n8nBadge}</td><td>${t.company}</td><td>${typeBadgeHtml(t.type)}</td>
+        <td><a href="#" onclick="openTicketDetail('${t.id}');event.stopPropagation();return false" style="color:var(--blue);text-decoration:none"><strong>${t.id}</strong></a></td><td>${t.company}</td><td>${typeBadgeHtml(t.type)}</td>
         <td style="font-weight:700">${fmt(t.amount_requested)} MMK</td>
         <td>${visionCol}</td>
         <td>${simplifiedStatusBadge(t)}</td><td>${simplifiedRiskBadge(t)}</td>
       </tr>`;
     });
-    html += '</tbody></table></div></div>';
+    html += '</tbody></table></div>';
+    // KAN-34 verbal #B: pagination controls — show only if more than one page
+    if(totalPages > 1){
+      const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+      const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+      const rangeStart = pageStart + 1;
+      const rangeEnd = Math.min(pageEnd, sortedT.length);
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)">
+        <div>Showing <strong>${rangeStart}\u2013${rangeEnd}</strong> of <strong>${sortedT.length}</strong> tickets</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn" onclick="setDashboardPage(${currentPage-1})" ${prevDisabled} style="padding:6px 12px;font-size:12px">\u2190 Prev</button>
+          <span style="padding:0 8px">Page <strong>${currentPage}</strong> / ${totalPages}</span>
+          <button class="btn" onclick="setDashboardPage(${currentPage+1})" ${nextDisabled} style="padding:6px 12px;font-size:12px">Next \u2192</button>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
   }
 
   // Activity log
