@@ -3234,21 +3234,39 @@ function kan36Completeness(t){
   return { complete: complete, missing: missing, hardMissing: hardMissing, hasMismatch: hasMismatch };
 }
 
-// KAN-36 side-by-side AI Analysis — 6-row Email vs Document comparison table.
-// Green = match (case-insensitive, trim). Yellow = mismatch or one side missing. Gray = both empty.
+// KAN-36 side-by-side AI Analysis — 7-row Email vs Attachment comparison table.
+// KAN-42 reorg: Authorizations row (approvers vs signers) added as 7th row to
+// preserve audit-critical info lost when Pipeline Details (Technical) was
+// removed. Uses 'presence' match semantics since approver names and signer
+// names are semantically comparable but rarely identical strings.
+// Green = match. Yellow = mismatch or one side missing. Gray = both empty.
 function kan36RenderSideBySide(t){
+  const approversSummary = (t.approvals||t.email_approvals||[])
+    .map(function(a){ return (a && a.name) ? (a.name + (a.role ? ' ('+a.role+')' : '')) : ''; })
+    .filter(Boolean).join(', ');
+  const signersSummary = (t.document_signers||[])
+    .map(function(s){ return (s && s.name) ? (s.name + (s.role ? ' ('+s.role+')' : '')) : ''; })
+    .filter(Boolean).join(', ');
   const rows = [
     { label: 'Company Name', email: t.company || '', doc: t.doc_company_name || t.depositor_name || '' },
     { label: 'Initiator Name', email: t.initiator_name || '', doc: t.doc_initiator_name || '' },
     { label: 'Total Amount', email: t.amount_requested ? (fmt(t.amount_requested)+' '+(t.currency||'MMK')) : '', doc: t.amount_on_document ? (fmt(t.amount_on_document)+' '+(t.currency||'MMK')) : '' },
     { label: 'Pay Date', email: t.payment_date || '', doc: t.doc_payment_date || '' },
     { label: 'Purpose', email: t.purpose || '', doc: t.doc_purpose || '' },
-    { label: 'Cost Center', email: t.cost_center || '', doc: t.doc_cost_center || '' }
+    { label: 'Cost Center', email: t.cost_center || '', doc: t.doc_cost_center || '' },
+    { label: 'Authorizations', email: approversSummary, doc: signersSummary, matchType: 'presence' }
   ];
   function normalize(v){ return (v || '').toString().trim().toLowerCase(); }
   function statusOf(r){
     const a = normalize(r.email), b = normalize(r.doc);
     if(!a && !b) return 'empty';
+    // presence mode: treat both-populated as match regardless of exact string equality
+    // (used for Authorizations where approver list and signer list are semantically
+    // comparable but rarely identical strings).
+    if(r.matchType === 'presence'){
+      if(a && b) return 'match';
+      return 'partial';
+    }
     if(a && b && a === b) return 'match';
     if(a && b && a !== b) return 'mismatch';
     return 'partial'; // one side missing
@@ -3458,10 +3476,15 @@ function openTicketDetail(ticketId){
     // Currency defaults to MMK (Myanmar production target) but respects extracted value.
     const sourceWallet = t.corporate_wallet || '\u2014';
     const currency = t.currency || 'MMK';
+    // KAN-42 reorg: expanded Source Info row now includes Document Type +
+    // Transaction ID (when present) so these attachment-level metadata fields
+    // remain visible after the Pipeline Details (Technical) section removal.
     const sourceInfoHtml = '<div style="padding:10px 14px;margin-bottom:12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:13px;display:flex;gap:20px;flex-wrap:wrap">'
       + '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">From Wallet</span><br><strong style="font-family:monospace">' + sourceWallet + '</strong></div>'
       + '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Currency</span><br><strong>' + currency + '</strong></div>'
       + (t.payroll_period ? '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Payroll Period</span><br><strong>' + t.payroll_period + '</strong></div>' : '')
+      + (t.document_type ? '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Attachment Type</span><br><strong>' + t.document_type + '</strong></div>' : '')
+      + (t.transaction_id ? '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Transaction ID</span><br><strong style="font-family:monospace">' + t.transaction_id + '</strong></div>' : '')
       + '</div>';
 
     if(isOTC && !hasEmployees){
