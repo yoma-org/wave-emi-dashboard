@@ -2950,6 +2950,9 @@ function createTicketFromN8n(data){
     doc_initiator_name:data.doc_initiator_name||'',
     doc_purpose:data.doc_purpose||'',
     doc_cost_center:data.doc_cost_center||'',
+    // v11.4 Source Info: ticket-level fields for header row display
+    corporate_wallet:data.corporate_wallet||'',
+    currency:data.currency||'MMK',
   };
   state.tickets[tid].status = deriveStatus(state.tickets[tid]);
   state.tickets[tid].risk_level = computeRisk(state.tickets[tid]);
@@ -3231,7 +3234,7 @@ function kan36RenderSideBySide(t){
   const rows = [
     { label: 'Company Name', email: t.company || '', doc: t.doc_company_name || t.depositor_name || '' },
     { label: 'Initiator Name', email: t.initiator_name || '', doc: t.doc_initiator_name || '' },
-    { label: 'Total Amount', email: t.amount_requested ? (fmt(t.amount_requested)+' MMK') : '', doc: t.amount_on_document ? (fmt(t.amount_on_document)+' MMK') : '' },
+    { label: 'Total Amount', email: t.amount_requested ? (fmt(t.amount_requested)+' '+(t.currency||'MMK')) : '', doc: t.amount_on_document ? (fmt(t.amount_on_document)+' '+(t.currency||'MMK')) : '' },
     { label: 'Pay Date', email: t.payment_date || '', doc: t.doc_payment_date || '' },
     { label: 'Purpose', email: t.purpose || '', doc: t.doc_purpose || '' },
     { label: 'Cost Center', email: t.cost_center || '', doc: t.doc_cost_center || '' }
@@ -3471,25 +3474,42 @@ function openTicketDetail(ticketId){
     const empData = t.extracted_employees || t.employee_data || [];
     const hasEmployees = empData.length > 0;
 
+    // v11.4: Source Info row — shown above Employee List section for BOTH MA and OTC
+    // Values sourced from attachment via Vision (corporate_wallet field) with fallback.
+    // Currency defaults to MMK (Myanmar production target) but respects extracted value.
+    const sourceWallet = t.corporate_wallet || '\u2014';
+    const currency = t.currency || 'MMK';
+    const sourceInfoHtml = '<div style="padding:10px 14px;margin-bottom:12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:13px;display:flex;gap:20px;flex-wrap:wrap">'
+      + '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">From Wallet</span><br><strong style="font-family:monospace">' + sourceWallet + '</strong></div>'
+      + '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Currency</span><br><strong>' + currency + '</strong></div>'
+      + (t.payroll_period ? '<div><span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Payroll Period</span><br><strong>' + t.payroll_period + '</strong></div>' : '')
+      + '</div>';
+
     if(isOTC && !hasEmployees){
-      // OTC convention: no employee list expected. Show a compact note instead of empty table.
+      // OTC convention: no employee list expected. Show Source Info + compact note.
       html += '<div class="section-collapsible open"><div class="section-toggle">Employee List</div><div class="section-body">';
+      html += sourceInfoHtml;
       html += '<div style="padding:10px 14px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;color:#3730a3;font-size:13px">\uD83D\uDDC3\uFE0F <strong>OTC ticket</strong> — Over-The-Counter disbursements typically do not include an employee list inside the payroll attachment. This is expected, not an error.</div>';
       html += '</div></div>';
     } else {
-      // MA path (or OTC with unexpected employee list): 4-column table per KAN-36 spec
+      // MA path (or OTC with unexpected employee list)
       const empLabel = hasEmployees ? 'Employee List ('+empData.length+' employees)' : 'Employee List';
       html += '<div class="section-collapsible'+(hasEmployees?' open':'')+'"><div class="section-toggle" onclick="this.parentElement.classList.toggle(\'open\')">'+empLabel+'</div><div class="section-body">';
+      html += sourceInfoHtml;
       if(hasEmployees){
         const empConf = t.employee_extraction_confidence ? (t.employee_extraction_confidence*100).toFixed(0) : null;
         if(empConf) html += '<div style="margin-bottom:8px"><span class="badge badge-purple">Auto-Extracted from Email</span><span style="color:var(--muted);font-size:12px;margin-left:6px">Extraction: '+empConf+'%</span></div>';
-        // KAN-36 4-column spec: SI No | From Wallet | To Wallet | eMoney Amount
-        const fromWallet = t.company || t.depositor_name || '—';
-        html += '<div style="max-height:280px;overflow-y:auto"><table class="csv-table"><thead><tr><th style="width:48px">SI No</th><th title="Source wallet — displays depositor/company name until corporate wallet ID lookup is implemented">From Wallet</th><th>To Wallet</th><th style="text-align:right">eMoney Amount</th></tr></thead><tbody>';
+        // v11.4: Honors Vinh's 4-column KAN-36 spec but swaps the useless
+        // per-row "From Wallet" (was company name repeated) for the universally-
+        // present Employee Name. "From Wallet" is now ticket-level, shown in
+        // the Source Info row above.
+        // Columns: SI No | Employee Name | To Wallet (phone / account) | Amount
+        html += '<div style="max-height:280px;overflow-y:auto"><table class="csv-table"><thead><tr><th style="width:48px">SI No</th><th>Employee Name</th><th>To Wallet</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
         empData.forEach(function(e, idx){
-          const phone = e.account_or_phone || e.MSISDN || e.phone || '';
+          const name = e.name || e.Cleaned_Name || e.Original_Name || '\u2014';
+          const toWallet = e.account_or_phone || e.MSISDN || e.phone || '';
           const amt = e.amount || e.Amount || 0;
-          html += '<tr><td>'+(idx+1)+'</td><td>'+fromWallet+'</td><td>'+phone+'</td><td style="text-align:right">'+fmt(amt)+' MMK</td></tr>';
+          html += '<tr><td>'+(idx+1)+'</td><td>'+name+'</td><td style="font-family:monospace">'+toWallet+'</td><td style="text-align:right">'+fmt(amt)+' '+currency+'</td></tr>';
         });
         html += '</tbody></table></div>';
       }
