@@ -3197,15 +3197,22 @@ function downloadCSVOnly(ticketId){
 // Used by both the "Generate CSV for Finance" button gate (B4) and the warning panel (B5).
 // Soft gate for cost_center per DK's option C: listed in warning but doesn't strictly block CSV.
 function kan36Completeness(t){
+  // v11.3: derive effective payment type from t.payment_type (pipeline-set) OR t.type
+  // (webhook-persisted legacy column) OR fallback by extracted_employees count.
+  // Avoids false "Payment type missing" in warning panel when the field isn't
+  // explicitly populated but the type is derivable from ticket state.
+  const effectivePaymentType = t.payment_type
+    || (t.type === 'SalaryToMA' ? 'salarytoMA' : t.type === 'SalaryToOTC' ? 'salarytoOTC' : '')
+    || ((t.extracted_employees || []).length > 0 ? 'salarytoMA' : 'salarytoOTC');
   const missing = [];
   if(!t.company || t.company === 'Unknown Company') missing.push('Company name');
   if(!t.initiator_name) missing.push('Initiator Name');
-  if(!t.payment_type) missing.push('Payment type');
+  if(!effectivePaymentType) missing.push('Payment type');
   if(!t.payment_date) missing.push('Payment date');
   if(!t.purpose) missing.push('Purpose');
   if(!t.cost_center) missing.push('Cost Center');
   // Valid phone/account: MA needs every employee; OTC needs at least one bank account on document
-  const isOTC = t.payment_type === 'salarytoOTC';
+  const isOTC = effectivePaymentType === 'salarytoOTC';
   const emps = t.extracted_employees || [];
   if(!isOTC){
     if(emps.length === 0){ missing.push('Employee list (phone/account)'); }
@@ -3431,8 +3438,18 @@ function openTicketDetail(ticketId){
     </div>`;
   }
 
-  // Mismatch Action — Return for Correction (Minh: bank shouldn't fix client's error)
-  if(t.scenario === 'AMOUNT_MISMATCH' && !t.prechecks_done){
+  // Legacy Mismatch Action — Return for Correction (Minh: bank shouldn't fix client's error)
+  // v11.3: suppress this legacy red panel when the KAN-36 yellow warning panel is visible
+  // above (which covers the same case + shows richer missing-field list + uses the real
+  // Return-to-Client workflow instead of mailto:). The legacy panel's mailto approach
+  // bypasses the n8n return-email pipeline and is operationally inferior. Keep the code
+  // path alive only for non-KAN-36-covered scenarios (shouldn't exist currently, but
+  // guards against regressions if spec evolves).
+  const kan36PanelWillShow = !alreadyApproved && (function(){
+    const c = kan36Completeness(t);
+    return c.missing.length > 0 || c.hasMismatch;
+  })();
+  if(t.scenario === 'AMOUNT_MISMATCH' && !t.prechecks_done && !kan36PanelWillShow){
     html += `<div style="background:#fee2e2;border:2px solid var(--danger);border-radius:8px;padding:16px;margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <div>
