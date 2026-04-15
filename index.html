@@ -3441,33 +3441,6 @@ function openTicketDetail(ticketId){
     </div>`;
   }
 
-  // Legacy Mismatch Action — Return for Correction (Minh: bank shouldn't fix client's error)
-  // v11.3: suppress this legacy red panel when the KAN-36 yellow warning panel is visible
-  // above (which covers the same case + shows richer missing-field list + uses the real
-  // Return-to-Client workflow instead of mailto:). The legacy panel's mailto approach
-  // bypasses the n8n return-email pipeline and is operationally inferior. Keep the code
-  // path alive only for non-KAN-36-covered scenarios (shouldn't exist currently, but
-  // guards against regressions if spec evolves).
-  const kan36PanelWillShow = !alreadyApproved && (function(){
-    const c = kan36Completeness(t);
-    return c.missing.length > 0 || c.hasMismatch;
-  })();
-  if(t.scenario === 'AMOUNT_MISMATCH' && !t.prechecks_done && !kan36PanelWillShow){
-    html += `<div style="background:#fee2e2;border:2px solid var(--danger);border-radius:8px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
-        <div>
-          <strong style="color:var(--danger)">Action Required</strong>
-          <div style="font-size:13px;color:var(--text);margin-top:4px">The amounts do not match. Return to the client for correction, or override to continue processing.</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn" style="background:var(--danger);color:#fff;font-size:13px" onclick="var subj='Re: ${(t.original_subject||t.company).replace(/'/g,"\\'")} — Amount Discrepancy';var body='Dear Client,%0A%0AWe detected a discrepancy in your disbursement request:%0A- Your email requests: ${fmt(t.amount_requested)} MMK%0A- Your attached document shows: ${fmt(t.amount_on_document||0)} MMK%0A%0APlease verify and resubmit with matching amounts.%0A%0ABest regards,%0AWave Money Operations';window.open('mailto:${t.from_email||""}?subject='+encodeURIComponent(subj)+'&body='+body)">Return for Correction</button>
-          <button class="btn btn-outline" style="font-size:13px;color:var(--muted)" onclick="this.parentElement.parentElement.parentElement.style.display='none'">Override &amp; Continue</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:#92400e;margin-top:10px;border-top:1px solid #fde68a;padding-top:8px">This ticket is preserved for audit. A corrected resubmission from the client will create a new ticket.</div>
-    </div>`;
-  }
-
   // KAN-36: Employee List — 4-column rework for MA, hide-with-note for OTC
   if(t.n8n_source||t.ai_parsed){
     const isOTC = t.payment_type === 'salarytoOTC';
