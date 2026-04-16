@@ -659,10 +659,10 @@ function reconcileAmounts(ticket, employees){
   const cur = ticket.currency || 'MMK';
 
   if(slip != null){
-    if(req === slip) checks.push({check:'Email vs Bank Slip',status:'pass',detail:`Both show ${fmtCur(req,cur)} \u2705`});
-    else checks.push({check:'Email vs Bank Slip',status:'fail',detail:`Email: ${fmt(req)} vs Slip: ${fmt(slip)} \u2014 Gap: ${fmtCur(Math.abs(req-slip),cur)}`});
+    if(req === slip) checks.push({check:'Email vs Attachment',status:'pass',detail:`Both show ${fmtCur(req,cur)} \u2705`});
+    else checks.push({check:'Email vs Attachment',status:'fail',detail:`Email: ${fmt(req)} vs Slip: ${fmt(slip)} \u2014 Gap: ${fmtCur(Math.abs(req-slip),cur)}`});
   } else {
-    checks.push({check:'Email vs Bank Slip',status:'warn',detail:'No bank slip uploaded yet'});
+    checks.push({check:'Email vs Attachment',status:'warn',detail:'No attachment data yet'});
   }
 
   if(employees && employees.length > 0){
@@ -878,7 +878,7 @@ function seedDemoTickets(){
       employee_data:null, total_employees:22, invalid_msisdn_count:0, names_cleaned_count:3,
       employee_file_name:'capital_taiyo_employees.xlsx',
       reconciliation:[
-        {check:'Email vs Bank Slip',status:'pass',detail:'Both show 2,450,000 MMK \u2705'},
+        {check:'Email vs Attachment',status:'pass',detail:'Both show 2,450,000 MMK \u2705'},
         {check:'Employee Total vs Requested',status:'pass',detail:'Both show 2,450,000 MMK \u2705'},
         {check:'Three-Way Match',status:'pass',detail:'All sources agree: 2,450,000 MMK \u2705'},
       ],
@@ -899,7 +899,7 @@ function seedDemoTickets(){
       employee_data:null, total_employees:41, invalid_msisdn_count:2, names_cleaned_count:7,
       employee_file_name:'ggi_employees.xlsx',
       reconciliation:[
-        {check:'Email vs Bank Slip',status:'pass',detail:'Both show 5,100,000 MMK \u2705'},
+        {check:'Email vs Attachment',status:'pass',detail:'Both show 5,100,000 MMK \u2705'},
         {check:'Employee Total vs Requested',status:'pass',detail:'Both show 5,100,000 MMK \u2705'},
       ],
       finance_status:'PENDING', finance_approved_by:null,
@@ -1427,13 +1427,18 @@ function renderDashboard(){
       if(t.finance_status==='APPROVED') trackB = '<span style="color:#16a34a;font-weight:600">\u2705 Approved</span>';
       else if(t.finance_status==='REJECTED') trackB = '<span style="color:#dc2626;font-weight:600">\u274C Rejected</span>';
       // KAN-34 verbal #A: Auto badge removed from dashboard per Vinh
-      let visionCol = '<span style="color:#94a3b8;font-size:12px">—</span>';
-      if(t.vision_parsed){
+      // v12.4: extraction badge for ticket table — shows method + confidence
+      let visionCol = '<span style="color:#94a3b8;font-size:12px">\u2014</span>';
+      if(t.extraction_method === 'spreadsheet'){
+        visionCol = '<span style="background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600">\uD83D\uDCCA Parsed \u2713</span>';
+        if(t.amount_on_document && t.has_mismatch) visionCol += '<br><span style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 4px;border-radius:3px">\u26A0 mismatch</span>';
+        else if(t.amount_on_document) visionCol += '<br><span style="background:#dcfce7;color:#166534;font-size:10px;padding:1px 4px;border-radius:3px">\u2713 match</span>';
+      } else if(t.vision_parsed){
         const conf = (t.vision_confidence*100).toFixed(0);
         const confColor = conf>=90?'background:#dcfce7;color:#166534':conf>=70?'background:#fef3c7;color:#92400e':'background:#fee2e2;color:#dc2626';
-        visionCol = `<span style="${confColor};font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600">👁 Vision${conf>0?' '+conf+'%':''}</span>`;
-        if(t.amount_on_document && t.has_mismatch) visionCol += '<br><span style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 4px;border-radius:3px">⚠ mismatch</span>';
-        else if(t.amount_on_document) visionCol += '<br><span style="background:#dcfce7;color:#166534;font-size:10px;padding:1px 4px;border-radius:3px">✓ match</span>';
+        visionCol = `<span style="${confColor};font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600">\uD83D\uDC41 Vision${conf>0?' '+conf+'%':''}</span>`;
+        if(t.amount_on_document && t.has_mismatch) visionCol += '<br><span style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 4px;border-radius:3px">\u26A0 mismatch</span>';
+        else if(t.amount_on_document) visionCol += '<br><span style="background:#dcfce7;color:#166534;font-size:10px;padding:1px 4px;border-radius:3px">\u2713 match</span>';
       } else if(t.vision_status && t.vision_status !== 'none'){
         visionCol = `<span style="color:#dc2626;font-size:11px">${t.vision_status}</span>`;
       }
@@ -1508,11 +1513,14 @@ function renderEmails(){
     n8nTickets.forEach(t => {
       const subject = t.original_subject||t.company;
       const dateStr = t.email_date ? new Date(t.email_date).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-      let visionBadge = '';
-      if(t.vision_parsed){
+      // v12.4: extraction badge — dynamic based on how data was extracted
+      let extractionBadge = '';
+      if(t.extraction_method === 'spreadsheet'){
+        extractionBadge = '<span class="badge-sent" style="background:#dbeafe;color:#1d4ed8">Parsed \u2713</span>';
+      } else if(t.vision_parsed){
         const conf = (t.vision_confidence*100).toFixed(0);
         const confCls = conf>=90?'badge-sent':conf>=70?'badge-warn':'badge-rejected';
-        visionBadge = `<span class="${confCls}">Vision${conf>0?' '+conf+'%':''}</span>`;
+        extractionBadge = `<span class="${confCls}">Vision${conf>0?' '+conf+'%':''}</span>`;
       }
       html += `<div class="n8n-ticket-card" onclick="openTicketDetail('${t.id}')">
         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;flex-wrap:wrap;gap:6px">
@@ -1521,12 +1529,12 @@ function renderEmails(){
             <span style="color:var(--muted);font-size:12px">${dateStr?' &middot; '+dateStr:''}</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">${typeBadgeHtml(t.type)}
             ${t.scenario&&t.scenario!=='NORMAL'?'<span class="badge badge-warn">'+t.scenario.replace(/_/g,' ')+'</span>':''}
-            ${visionBadge}
+            ${extractionBadge}
             ${t.has_attachments?'<span class="badge badge-blue">Attach: '+t.attachment_count+'</span>':''}</div>
         </div>
         <div class="grid-2" style="margin-bottom:8px">
           <div><span style="color:var(--muted);font-size:11px;text-transform:uppercase">Amount Requested</span><br><strong>${fmtCur(t.amount_requested, t.currency)}</strong></div>
-          <div><span style="color:var(--muted);font-size:11px;text-transform:uppercase">${t.vision_parsed?'Vision Document Amount':'Bank Slip Amount'}</span><br><strong>${fmtCur(t.amount_on_document||t.amount_on_bank_slip||0, t.currency)}</strong>${t.has_mismatch?' <span style="color:#92400e;font-size:11px">MISMATCH</span>':''}</div>
+          <div><span style="color:var(--muted);font-size:11px;text-transform:uppercase">Attachment Amount</span><br><strong>${fmtCur(t.amount_on_document||t.amount_on_bank_slip||0, t.currency)}</strong>${t.has_mismatch?' <span style="color:#92400e;font-size:11px">MISMATCH</span>':''}</div>
         </div>
         ${(function(){
           var mx = checkAuthorityMatrix(t);
@@ -1620,7 +1628,7 @@ function renderEmails(){
 
     html += `<div class="grid-2" style="margin-bottom:12px">
       <div><span style="color:var(--muted);font-size:12px">AMOUNT REQUESTED</span><br><strong>${fmtCur(email.amount_requested, email.currency)}</strong></div>
-      <div><span style="color:var(--muted);font-size:12px">BANK SLIP AMOUNT</span><br><strong>${fmtCur(email.amount_on_bank_slip, email.currency)}</strong></div>
+      <div><span style="color:var(--muted);font-size:12px">ATTACHMENT AMOUNT</span><br><strong>${fmtCur(email.amount_on_bank_slip, email.currency)}</strong></div>
     </div>`;
 
     html += `<div style="font-size:13px;color:var(--muted);margin-bottom:16px">${email.body_preview}</div>`;
@@ -3289,7 +3297,7 @@ function kan36RenderSideBySide(t){
     return '';
   }
   let html = '<table class="csv-table" style="width:100%;border-collapse:separate;border-spacing:0 4px"><thead><tr>';
-  html += '<th style="width:140px">Field</th><th>From Email (AI Extract)</th><th>From Attachment (Vision)</th><th style="width:40px;text-align:center">Match</th>';
+  html += '<th style="width:140px">Field</th><th>From Email (AI Extract)</th><th>From Attachment</th><th style="width:40px;text-align:center">Match</th>';
   html += '</tr></thead><tbody>';
   rows.forEach(function(r){
     const s = statusOf(r);
@@ -3358,7 +3366,7 @@ function openTicketDetail(ticketId){
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         ${typeBadgeHtml(t.type)} ${riskBadgeHtml(t.risk_level)}
         ${t.scenario&&t.scenario!=='NORMAL'?'<span class="badge badge-warn">'+t.scenario.replace(/_/g,' ')+'</span>':''}
-        ${t.vision_parsed?(()=>{const c=((t.vision_confidence||0)*100).toFixed(0);const cls=c>=90?'badge-sent':c>=70?'badge-warn':'badge-rejected';return '<span class="'+cls+'">Vision'+(c>0?' '+c+'%':'')+'</span>';})():''}
+        ${t.extraction_method==='spreadsheet'?'<span class="badge-sent" style="background:#dbeafe;color:#1d4ed8">Parsed \u2713</span>':t.vision_parsed?(()=>{const c=((t.vision_confidence||0)*100).toFixed(0);const cls=c>=90?'badge-sent':c>=70?'badge-warn':'badge-rejected';return '<span class="'+cls+'">Vision'+(c>0?' '+c+'%':'')+'</span>';})():''}
       </div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ticket-detail-modal').classList.remove('open')" style="font-size:20px;padding:4px 8px">&times;</button>
