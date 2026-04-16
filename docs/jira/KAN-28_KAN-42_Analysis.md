@@ -1,9 +1,12 @@
 # KAN-28 + KAN-42 — Analysis, Scope, Triage
 
-**Status (as of Apr 15 21:00):**
+**Status (as of Apr 16 10:00):**
 - ✅ **KAN-42 SHIPPED** via 3-commit reorg (`8a5ab94` + `cc4e659` + `3ef438a`). Verified on TKT-044 + TKT-045.
-- ⏸️ **KAN-28** partial — scope analyzed, #3 verification pending tonight (optional), #1 + #2 tomorrow, #4 deferred post go-live.
-- 🟡 **v12.2 signers regression** discovered during KAN-42 verification — Option B accepted (defer patch). See `known_issue_v12_document_signers_regression.md`.
+- ✅ **KAN-28 #2 SHIPPED** — empty body rejection. Skip + Is Rejection Email? IF + Send Rejection Email node. Tested: rejection email sent, no ticket created.
+- ✅ **KAN-28 #3 SHIPPED** — body-only processing. Conditional responseSchema (vision-only) + amount fallback. TKT-049: 4 employees extracted from inline text, Three-Way Match green.
+- ✅ **v12.2 signers patch SHIPPED** — document_signers in Gemini schema + prompt + Parse passthrough.
+- ⏸️ **KAN-28 #1** — password-protected Excel detection. Needs research (magic-byte, OLE2 vs ZIP signatures).
+- ⏸️ **KAN-28 #4** — multiple attachments. Deferred per Vinh ("waiting for final solution" + align with Rita).
 
 **Created:** 2026-04-15 evening, post-v12.1 ship
 **Assignee:** DK · **Reporter:** Vinh Nguyen · **Priority:** both High
