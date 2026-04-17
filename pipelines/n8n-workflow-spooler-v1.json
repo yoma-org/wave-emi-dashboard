@@ -1,0 +1,115 @@
+{
+  "name": "EMI Spooler v1 (KAN-46) — Outlook → Supabase Queue",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## EMI Spooler v1 — KAN-46 Durable Queue\n\n**Purpose:** Fast ingest from Outlook → Supabase email_queue table.\n**Execution time target:** <2 seconds per email\n**No heavy work here** — Gemini, XLSX parse, notifications all happen in the Worker workflow.\n\n### Flow\n1. Outlook Trigger fires (every 1 min, when new email arrives)\n2. Code node: extract metadata + binary attachments as base64\n3. Code node: POST to Supabase /rest/v1/email_queue (with dedup via Prefer header)\n4. Done\n\n### Why this is safe\n- Outlook Trigger consumes email → Spooler persists to durable queue BEFORE execution ends\n- If Supabase POST fails: retry 3x with 2s delay (built into Code node)\n- If all retries fail: throws error → n8n shows failed execution, DK notified\n- UNIQUE(message_id) dedup: if Spooler fires twice somehow, second insert is no-op\n\n### Rollback\nDeactivate this workflow in n8n UI → activate v12.4 pipeline. Takes <5 sec.\nUnread emails in Outlook will be picked up by v12.4 on next poll.\n\n### NOT handled here (intentionally)\n- Skip filters (empty body, file type detection, etc.) → Worker handles\n- ONE loop guard included (self-send) to prevent notification→trigger loop\n- Gemini, XLSX, notifications → Worker",
+        "height": 480,
+        "width": 500
+      },
+      "id": "sticky-note-spooler",
+      "name": "Spooler Architecture Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-150, 200]
+    },
+    {
+      "parameters": {
+        "simple": false,
+        "output": "raw",
+        "filters": {},
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "outlook-trigger-spooler",
+      "name": "INTAKE: Outlook Mailbox (production)",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [400, 300],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_OUTLOOK_CREDENTIAL_ID",
+          "name": "Outlook (emoney@zeyalabs.ai)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emi-spooler-test",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-spooler-test",
+      "name": "INTAKE: Manual Test (POST JSON)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [400, 480],
+      "webhookId": "emi-spooler-test"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════\n// EMI Spooler v1 — Fast Ingest to Supabase email_queue\n// KAN-46: Decouples ingestion from processing for concurrency safety\n// ═══════════════════════════════════════════════════════════════\n\nconst item = $input.item;\nconst SUPABASE_URL = 'https://dicluyfkfqlqjwqikznl.supabase.co';\nconst SUPABASE_SERVICE_KEY = 'REPLACE_WITH_SUPABASE_SERVICE_ROLE_KEY';\n\n// ─────────────────────────────────────────────────────────────\n// STEP 0: Unwrap n8n Webhook body if needed\n// ─────────────────────────────────────────────────────────────\n// n8n Webhook node (typeVersion 2) wraps POST body under `body`.\n// Outlook Trigger doesn't. Detect wrapper and unwrap uniformly.\nlet d = item.json;\nif (d && d.webhookUrl && d.headers && d.body && typeof d.body === 'object') {\n  d = d.body;\n}\n\n// ─────────────────────────────────────────────────────────────\n// STEP 1: Guard against malformed items\n// ─────────────────────────────────────────────────────────────\nif (!d || typeof d !== 'object' || Array.isArray(d)) {\n  return { json: { _spool_status: 'skipped', _reason: 'malformed_item' } };\n}\n\n// Skip items that have no email metadata (e.g., binary-only fragments)\nif (!d.subject && !d.bodyPreview && !d.Subject && !d.From && !(d.body && d.body.content) && !d.from) {\n  return { json: { _spool_status: 'skipped', _reason: 'no_email_metadata' } };\n}\n\n// ─────────────────────────────────────────────────────────────\n// STEP 2: Extract minimal metadata (Outlook format)\n// ─────────────────────────────────────────────────────────────\nconst isEmail = d.snippet !== undefined || d.threadId !== undefined || d.Subject !== undefined ||\n               d.From !== undefined || d.bodyPreview !== undefined || (d.from && d.from.emailAddress);\nconst source = isEmail ? 'email' : 'webhook';\n\nfunction resolveValue(val) {\n  if (typeof val === 'string') return val;\n  if (val && typeof val === 'object') {\n    if (val.text && typeof val.text === 'string') return val.text;\n    if (Array.isArray(val.value) && val.value[0]) {\n      return val.value.map(v => v.address || '').filter(Boolean).join(', ');\n    }\n    if (val.address) return val.address;\n  }\n  return '';\n}\n\nconst subject = isEmail\n  ? (d.subject || d.Subject || '')\n  : (d.body?.subject || d.subject || '');\n\nconst messageId = d.id || d.messageId || d.Message_ID || '';\nif (!messageId) {\n  return { json: { _spool_status: 'skipped', _reason: 'no_message_id' } };\n}\n\n// Extract sender email\nlet fromAddress = '';\nif (d.from && d.from.emailAddress && d.from.emailAddress.address) {\n  fromAddress = d.from.emailAddress.address;\n} else if (d.From) {\n  fromAddress = resolveValue(d.From);\n}\n\n// ─────────────────────────────────────────────────────────────\n// STEP 3: LOOP GUARD — skip our own outbound emails\n// ─────────────────────────────────────────────────────────────\n// emoney@zeyalabs.ai is CC'd on notifications; without this, pipeline loops.\n// This is the ONLY filter in Spooler. All other filters run in Worker.\nif (fromAddress.toLowerCase() === 'emoney@zeyalabs.ai' ||\n    subject.includes('EMI Pipeline:') ||\n    subject.includes('EMI Pipeline \\u2014')) {\n  return { json: { _spool_status: 'skipped', _reason: 'loop_guard_self_send', message_id: messageId } };\n}\n\n// ─────────────────────────────────────────────────────────────\n// STEP 4: Extract binary attachments as base64 (for Worker)\n// ─────────────────────────────────────────────────────────────\nconst attachments = [];\nconst MAX_ATTACHMENT_SIZE = 4 * 1024 * 1024; // 4MB per attachment\nconst MAX_ATTACHMENTS = 5;\n\nif (item.binary) {\n  const keys = Object.keys(item.binary).filter(k => k.startsWith('attachment_'));\n  for (let j = 0; j < Math.min(keys.length, MAX_ATTACHMENTS); j++) {\n    const meta = item.binary[keys[j]];\n    try {\n      const buffer = await helpers.getBinaryDataBuffer($itemIndex, keys[j]);\n      if (buffer.length <= MAX_ATTACHMENT_SIZE) {\n        attachments.push({\n          filename: meta.fileName || keys[j],\n          mimeType: meta.mimeType || 'application/octet-stream',\n          base64: buffer.toString('base64'),\n          sizeBytes: buffer.length\n        });\n      } else {\n        attachments.push({\n          filename: meta.fileName || keys[j],\n          mimeType: meta.mimeType || 'application/octet-stream',\n          base64: null,\n          sizeBytes: buffer.length,\n          _skipped_reason: 'exceeds_4mb_limit'\n        });\n      }\n    } catch (e) {\n      // Skip unreadable attachment but continue\n    }\n  }\n}\n\n// ─────────────────────────────────────────────────────────────\n// STEP 5: Build payload for Supabase email_queue\n// ─────────────────────────────────────────────────────────────\nconst payload = {\n  message_id: messageId,\n  from_address: fromAddress,\n  subject: subject,\n  received_at: d.receivedDateTime || new Date().toISOString(),\n  payload: {\n    source: source,\n    raw_email: d,                        // full Outlook payload for Worker\n    attachments: attachments,            // base64 attachments for Worker\n    attachment_count: attachments.length,\n    spooled_at: new Date().toISOString()\n  }\n};\n\n// ─────────────────────────────────────────────────────────────\n// STEP 6: POST to Supabase email_queue with retry (3x, 2s delay)\n// ─────────────────────────────────────────────────────────────\nlet lastError = null;\nlet inserted = false;\n\nfor (let attempt = 1; attempt <= 3; attempt++) {\n  try {\n    await helpers.httpRequest({\n      method: 'POST',\n      url: `${SUPABASE_URL}/rest/v1/email_queue`,\n      headers: {\n        'apikey': SUPABASE_SERVICE_KEY,\n        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,\n        'Content-Type': 'application/json',\n        'Prefer': 'resolution=ignore-duplicates'\n      },\n      body: payload,\n      json: true\n    });\n    inserted = true;\n    break;\n  } catch (e) {\n    lastError = e;\n    if (attempt < 3) {\n      await new Promise(r => setTimeout(r, 2000));\n    }\n  }\n}\n\nif (!inserted) {\n  // All 3 retries failed — throw so n8n marks execution as failed.\n  // Operator will see failed execution in n8n UI and can investigate.\n  // DK can manually mark email as unread in Outlook to replay via v12.4 fallback.\n  throw new Error('Spooler failed to persist to Supabase after 3 attempts: ' + (lastError?.message || String(lastError)));\n}\n\nreturn {\n  json: {\n    _spool_status: 'queued',\n    message_id: messageId,\n    from_address: fromAddress,\n    subject: subject,\n    attachment_count: attachments.length,\n    spooled_at: new Date().toISOString()\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "spool-to-queue",
+      "name": "Spool to Supabase Queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-spooler-test",
+      "name": "Respond (test path only)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 480]
+    }
+  ],
+  "connections": {
+    "INTAKE: Outlook Mailbox (production)": {
+      "main": [
+        [
+          {
+            "node": "Spool to Supabase Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INTAKE: Manual Test (POST JSON)": {
+      "main": [
+        [
+          {
+            "node": "Spool to Supabase Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spool to Supabase Queue": {
+      "main": [
+        [
+          {
+            "node": "Respond (test path only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

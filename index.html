@@ -86,6 +86,22 @@ main{max-width:1100px;margin:0 auto;padding:28px 24px;}
 .stat-card.blue{border-left-color:var(--blue);}.stat-card.blue .stat-value{color:var(--blue);}.stat-card.blue::after{background:var(--blue);}
 .stat-card.accent{border-left-color:var(--accent);}.stat-card.accent::after{background:var(--accent);}
 
+/* KAN-46: Pipeline Queue Strip (live state of Supabase email_queue) */
+.pipeline-queue{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.pipeline-queue .pq-title{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;}
+.pipeline-queue .pq-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:6px;animation:pqPulse 2s ease-in-out infinite;}
+@keyframes pqPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.pipeline-queue .pq-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--navy);}
+.pipeline-queue .pq-icon{font-size:16px;}
+.pipeline-queue .pq-label{color:var(--muted);font-weight:500;}
+.pipeline-queue .pq-count{font-weight:800;font-size:18px;color:var(--navy);min-width:20px;text-align:right;}
+.pipeline-queue .pq-count.pending{color:var(--blue);}
+.pipeline-queue .pq-count.processing{color:var(--accent);animation:pqPulse 1.5s ease-in-out infinite;}
+.pipeline-queue .pq-count.completed{color:var(--success);}
+.pipeline-queue .pq-count.failed{color:var(--danger);}
+.pipeline-queue .pq-stuck{margin-left:auto;padding:4px 10px;border-radius:var(--radius);background:var(--warn-bg,#fef3c7);color:var(--warn);font-size:12px;font-weight:600;cursor:pointer;display:none;}
+.pipeline-queue .pq-stuck.show{display:inline-flex;align-items:center;gap:6px;}
+
 /* BADGES */
 .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
 .badge-danger{background:#fee2e2;color:var(--danger);}
@@ -523,6 +539,53 @@ let sb = null;
 try {
   if(window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch(e) { console.warn('Supabase not available, using localStorage only'); }
+
+// ─── KAN-46: Pipeline Queue live polling ───────────────────────────────────
+// Polls email_queue_summary + email_queue_stuck views every 5s.
+// Views are anon-readable (see sql/kan46_schema_v1.sql GRANT SELECT).
+let _pipelineQueueInterval = null;
+async function refreshPipelineQueue(){
+  if(!sb) return;
+  try {
+    const [sumRes, stuckRes] = await Promise.all([
+      sb.from('email_queue_summary').select('*'),
+      sb.from('email_queue_stuck').select('id')
+    ]);
+    const summary = sumRes.data || [];
+    const stuck = stuckRes.data || [];
+    const counts = { pending:0, processing:0, completed:0, failed:0 };
+    summary.forEach(r => { if(r.status in counts) counts[r.status] = Number(r.count)||0; });
+    const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    setText('queue-pending', counts.pending);
+    setText('queue-processing', counts.processing);
+    setText('queue-completed', counts.completed);
+    setText('queue-failed', counts.failed);
+    setText('queue-stuck-count', stuck.length);
+    const badge = document.getElementById('queue-stuck-badge');
+    if(badge) badge.classList.toggle('show', stuck.length > 0);
+  } catch(e) {
+    // Silent fail — don't clog console on Supabase transient errors
+  }
+}
+function startPipelineQueuePolling(){
+  if(_pipelineQueueInterval || !sb) return;
+  refreshPipelineQueue();
+  _pipelineQueueInterval = setInterval(refreshPipelineQueue, 5000);
+}
+async function showStuckItems(){
+  if(!sb) { alert('Supabase not connected'); return; }
+  try {
+    const { data } = await sb.from('email_queue_stuck').select('*').order('locked_at',{ascending:true});
+    const rows = data || [];
+    if(rows.length === 0) { alert('No stuck items \uD83C\uDF89'); return; }
+    const lines = rows.map(r => `\u2022 ${r.message_id}\n  from: ${r.from_address||'?'}\n  subject: ${r.subject||'?'}\n  stuck for: ${r.stuck_minutes} min\n  attempts: ${r.attempts}\n  ${r.error_message?'error: '+r.error_message:''}`).join('\n\n');
+    alert(`Stuck items (>5 min in processing):\n\n${lines}\n\nTo retry: in Supabase SQL Editor, run:\nUPDATE email_queue SET status='pending', locked_at=NULL WHERE message_id IN (...);`);
+  } catch(e) {
+    alert('Failed to load stuck items: '+e.message);
+  }
+}
+// Start polling on page load if Supabase is connected
+if(sb) startPipelineQueuePolling();
 
 // ─── MOCK EMAIL DATA ──────────────────────────────────────────────────────────
 const MOCK_EMAILS = [
@@ -1390,6 +1453,14 @@ function renderDashboard(){
 
   let html = `
     <div class="section-title">\uD83C\uDF0A eMoney Dashboard</div>
+    <div class="pipeline-queue" id="pipeline-queue-strip" title="Live state of the n8n \u2192 Supabase email processing queue (KAN-46)" onmouseenter="refreshPipelineQueue&&refreshPipelineQueue()">
+      <div class="pq-title"><span class="pq-dot"></span>Pipeline Queue &mdash; Live</div>
+      <div class="pq-item"><span class="pq-icon">\u23F3</span><span class="pq-label">Pending</span><span class="pq-count pending" id="queue-pending">\u2014</span></div>
+      <div class="pq-item"><span class="pq-icon">\u2699\uFE0F</span><span class="pq-label">Processing</span><span class="pq-count processing" id="queue-processing">\u2014</span></div>
+      <div class="pq-item"><span class="pq-icon">\u2705</span><span class="pq-label">Completed</span><span class="pq-count completed" id="queue-completed">\u2014</span></div>
+      <div class="pq-item"><span class="pq-icon">\u274C</span><span class="pq-label">Failed</span><span class="pq-count failed" id="queue-failed">\u2014</span></div>
+      <div class="pq-stuck" id="queue-stuck-badge" onclick="showStuckItems()">\u26A0\uFE0F Stuck &gt;5min: <span id="queue-stuck-count">0</span></div>
+    </div>
     <div class="summary-row-3">
       <div class="stat-card accent ${activeFilter==='all'?'active-filter':''}" onclick="setCardFilter('all')">
         <div class="stat-label">All Emails</div><div class="stat-value">${allEmails}</div><div class="stat-sub">total tickets</div>
@@ -1472,6 +1543,10 @@ function renderDashboard(){
   // Wave 3B: Activity log moved to its own "Activity Log" tab (see renderActivity())
 
   el.innerHTML = html;
+
+  // KAN-46: refresh Pipeline Queue counts immediately after dashboard re-renders
+  // (innerHTML replaces the DOM nodes, so the IDs get new empty elements)
+  if(typeof refreshPipelineQueue === 'function') { refreshPipelineQueue(); }
 
   // Stat card count-up animation
   try {
