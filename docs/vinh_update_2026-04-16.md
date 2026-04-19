@@ -1,3 +1,14 @@
+---
+name: vinh_update_2026-04-16
+aliases: ["Vinh Update 2026-04-16", "Vinh Apr 16 Evening"]
+description: Teams message draft to Vinh reporting KAN-45 done, KAN-28 #1/#2/#3 done, CSV/XLSX support shipped. Guidance on ticket closure + KAN-28 split into KAN-47.
+type: reference
+topics: [vinh-updates, kan-45, kan-28, teams-message]
+status: archived
+created: 2026-04-16
+last_reviewed: 2026-04-19
+---
+
 # Vinh Teams Message — Apr 16 Evening Update
 
 **Context:** Report KAN-45 done, KAN-28 #1/#2/#3 done, CSV/XLSX support shipped. Guide Vinh on ticket closure + KAN-28 split.

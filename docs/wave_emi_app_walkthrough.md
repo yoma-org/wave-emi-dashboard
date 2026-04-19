@@ -1,3 +1,14 @@
+---
+name: wave_emi_app_walkthrough
+aliases: ["Wave EMI App Walkthrough", "Complete App Walkthrough"]
+description: End-to-end walkthrough of the Wave EMI Dashboard — what the app does, the 3 roles, the 7-step disbursement workflow, CSV formats, and business logic. Primary reference for new developers or stakeholders.
+type: reference
+topics: [wave-emi, app, walkthrough, onboarding]
+status: active
+created: 2026-04-10
+last_reviewed: 2026-04-19
+---
+
 # Wave EMI Pipeline — Complete App Walkthrough
 
 ## What This App Does

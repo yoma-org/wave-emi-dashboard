@@ -1,3 +1,14 @@
+---
+name: wave_emi_infrastructure_recommendation
+aliases: ["Wave EMI Infrastructure Recommendation", "Infrastructure Recommendation"]
+description: Infrastructure recommendation for PCI-compliant production hosting of Wave EMI salary disbursement system. Written in response to Rita's Apr 8 directive - find the right infrastructure before LLM selection.
+type: reference
+topics: [wave-emi, infrastructure, pci, hosting, aws, gcp]
+status: active
+created: 2026-04-09
+last_reviewed: 2026-04-19
+---
+
 # Infrastructure Recommendation — Wave EMI Dashboard
 
 **Prepared by:** DK Nguyen (Data Engineer, Trustify Technology)

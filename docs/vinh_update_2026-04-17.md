@@ -1,3 +1,14 @@
+---
+name: vinh_update_2026-04-17
+aliases: ["Vinh Update 2026-04-17", "KAN-46 Status Update to Vinh"]
+description: Teams/Messenger message draft to Vinh reporting v13.1.1 patch shipped (hardened parser + diagnostic routing). English and Vietnamese versions.
+type: reference
+topics: [vinh-updates, kan-46, v13-1-1, teams-message]
+status: archived
+created: 2026-04-17
+last_reviewed: 2026-04-19
+---
+
 # Message draft to Vinh — KAN-46 status update
 
 **Context:** Sent Apr 17, 2026 evening after shipping v13.1.1 patch.

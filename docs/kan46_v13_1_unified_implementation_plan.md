@@ -1,3 +1,14 @@
+---
+name: kan46_v13_1_unified_implementation_plan
+aliases: ["KAN-46 v13.1 Unified Implementation Plan", "v13.1 Zero-Waste Plan"]
+description: Detailed implementation plan for KAN-46 v13.1 unified zero-waste architecture (Database trigger + pg_cron + inner-loop drain). Now shipped; kept as reference for approach rationale.
+type: reference
+topics: [kan-46, v13-1, implementation, plan, shipped]
+status: shipped
+created: 2026-04-17
+last_reviewed: 2026-04-19
+---
+
 # KAN-46 v13.1 — Unified Zero-Waste Implementation Plan
 
 **Status:** READY TO IMPLEMENT

@@ -1,3 +1,14 @@
+---
+name: wave_emi_testing_guide_outlook_pipeline
+aliases: ["Wave EMI Testing Guide (Outlook)", "Outlook Pipeline Testing Guide"]
+description: Testing guide for Wave EMI Outlook pipeline - how to verify emails flow from emoney@zeyalabs.ai through n8n to dashboard. Note - written for v6 pipeline; portions still apply to current v13.2 but some steps need update.
+type: reference
+topics: [wave-emi, testing, outlook, n8n, qa]
+status: active
+created: 2026-04-10
+last_reviewed: 2026-04-19
+---
+
 # Testing Guide — EMI Pipeline v6 (Outlook)
 
 **For:** Vinh, Win, Binh, team members

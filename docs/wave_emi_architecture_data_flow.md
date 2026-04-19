@@ -1,3 +1,14 @@
+---
+name: wave_emi_architecture_data_flow
+aliases: ["Wave EMI Architecture & Data Flow", "Wave EMI Data Flow"]
+description: Architecture diagram and data flow for Wave EMI Dashboard — from client email through n8n pipeline to Vercel dashboard to Supabase. Note - some content references v6 pipeline (pre-v13) and may need update for current v13.2 architecture.
+type: reference
+topics: [wave-emi, architecture, data-flow, n8n, supabase]
+status: active
+created: 2026-04-10
+last_reviewed: 2026-04-19
+---
+
 # Architecture & Data Flow — Wave EMI Dashboard
 
 **For:** Binh, Tin, DK, backend team

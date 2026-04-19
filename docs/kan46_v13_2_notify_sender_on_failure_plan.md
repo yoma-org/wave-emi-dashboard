@@ -1,3 +1,14 @@
+---
+name: kan46_v13_2_notify_sender_on_failure_plan
+aliases: ["KAN-46 v13.2 Notify Sender Plan", "v13.2 Failure Notification Plan"]
+description: Implementation plan for v13.2 feature - notify email sender when Gemini extraction fails, with user-friendly reason and self-send loop protection. Shipped Apr 18 2026 (commit 44dbc07). See ADR-004 for decision record.
+type: reference
+topics: [kan-46, v13-2, implementation, plan, shipped, notification]
+status: shipped
+created: 2026-04-18
+last_reviewed: 2026-04-19
+---
+
 # KAN-46 v13.2 — Notify Sender on Extraction Failure
 
 **Status:** PLANNED — ready to implement

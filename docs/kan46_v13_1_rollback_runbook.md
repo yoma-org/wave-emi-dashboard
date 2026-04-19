@@ -1,3 +1,14 @@
+---
+name: kan46_v13_1_rollback_runbook
+aliases: ["KAN-46 v13.1 Rollback Runbook", "v13.1 Rollback"]
+description: Step-by-step runbook for rolling back KAN-46 v13.1 (or v13.2) back to v12.4 in under 30 seconds. Zero data loss (Outlook does not delete emails). Critical emergency reference.
+type: reference
+topics: [kan-46, v13-1, v13-2, rollback, runbook, incident-response]
+status: active
+created: 2026-04-17
+last_reviewed: 2026-04-19
+---
+
 # KAN-46 v13.1 Rollback Runbook
 
 **Target rollback time:** <30 seconds

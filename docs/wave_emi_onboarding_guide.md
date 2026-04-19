@@ -1,3 +1,14 @@
+---
+name: wave_emi_onboarding_guide
+aliases: ["Wave EMI Onboarding Guide", "Codebase Onboarding Guide"]
+description: Codebase onboarding guide for new developers joining Wave EMI Dashboard work. Originally written for Binh Le Quang (backend support), generalizable to any new team member.
+type: reference
+topics: [wave-emi, onboarding, developer-guide]
+status: active
+created: 2026-04-09
+last_reviewed: 2026-04-19
+---
+
 # Codebase Onboarding Guide — Wave EMI Dashboard
 
 **For:** Binh Le Quang (Backend Support)

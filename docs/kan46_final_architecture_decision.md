@@ -1,3 +1,14 @@
+---
+name: kan46_final_architecture_decision
+aliases: ["KAN-46 Final Architecture Decision", "KAN-46 Architecture Round 4/5"]
+description: Final architecture decision for KAN-46 concurrency handling, approved by DK + 7 AI Council (Round 4-5). Superseded by v13.1 unified architecture (see ADR-001, ADR-002) which emerged from Round 6.
+type: reference
+topics: [kan-46, architecture, ai-council-round4-5, superseded]
+status: superseded
+created: 2026-04-17
+last_reviewed: 2026-04-19
+---
+
 # KAN-46 Final Architecture Decision
 
 **Date:** Apr 17, 2026
