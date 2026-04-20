@@ -173,72 +173,124 @@ export default async function handler(req, res) {
     // Non-blocking — ticket already created
   }
 
-  // === STEP 3: Upload attachment to Storage + insert into ticket_attachments ===
-  let attachmentId = null;
-  let attachmentUrl = null;
+  // === STEP 3+4: Per-attachment upload + vision_results (KAN-47 v13.3) ===
+  //
+  // Accepts two input shapes for backward compatibility:
+  //   (a) LEGACY v13.2 — flat single-attachment fields:
+  //         data.attachment_base64, data.attachment_mime_type, data.attachment_filename,
+  //         data.vision_parsed, data.vision_confidence, ...
+  //   (b) NEW v13.3    — `data.attachments: [{ base64, mime_type, filename, vision_*, ... }]`
+  //
+  // Both shapes flow through the same loop below. For legacy single-attachment shape,
+  // we wrap it into a 1-item array so there's only one code path to maintain.
+  //
+  // Storage path: `{ticket_number}/{index}_{sanitized_filename}` — collision-safe for
+  // two attachments with the same filename (Council Q7/Gemini blind spot, test #13).
 
-  if (data.attachment_base64) {
+  const sanitizeFilename = (name) => String(name).replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  let attachmentsInput = [];
+  if (Array.isArray(data.attachments) && data.attachments.length > 0) {
+    // NEW v13.3 shape
+    attachmentsInput = data.attachments;
+  } else if (data.attachment_base64) {
+    // LEGACY v13.2 shape — wrap as 1-item array carrying flat vision fields
+    attachmentsInput = [{
+      base64: data.attachment_base64,
+      mime_type: data.attachment_mime_type,
+      filename: data.attachment_filename,
+      vision_parsed: data.vision_parsed,
+      vision_confidence: data.vision_confidence,
+      vision_status: data.vision_status,
+      document_type: data.document_type,
+      document_signers: data.document_signers,
+      amount_on_document: data.amount_on_document,
+      depositor_name: data.depositor_name,
+      remark: data.remark,
+      transaction_id: data.transaction_id,
+    }];
+  }
+
+  // First attachment's UUID — used only for legacy backward-compat callers that still
+  // expect a single `attachment_id` in the response body.
+  let firstAttachmentId = null;
+
+  for (let i = 0; i < attachmentsInput.length; i++) {
+    const att = attachmentsInput[i];
+    const base64Data = att.base64 || att.attachment_base64;
+    if (!base64Data) continue;
+    if (base64Data.length >= 5 * 1024 * 1024) {
+      console.warn(`Skipping attachment ${i}: size limit exceeded (${base64Data.length} bytes)`);
+      continue;
+    }
+
+    let attachmentId = null;
+    let storagePath = null;
+
     try {
-      const base64Data = data.attachment_base64;
-      if (base64Data.length < 5 * 1024 * 1024) {
-        const buffer = Buffer.from(base64Data, 'base64');
-        const mime = data.attachment_mime_type || 'image/jpeg';
-        const ext = mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg';
-        const originalName = data.attachment_filename || `attachment.${ext}`;
-        const filePath = `${ticketNumber}/${originalName}`;
+      const buffer = Buffer.from(base64Data, 'base64');
+      const mime = att.mime_type || att.attachment_mime_type || 'image/jpeg';
+      const ext = mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg';
+      const originalName = att.filename || att.attachment_filename || `attachment_${i}.${ext}`;
+      storagePath = `${ticketNumber}/${i}_${sanitizeFilename(originalName)}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, buffer, { contentType: mime, upsert: true });
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(storagePath, buffer, { contentType: mime, upsert: true });
 
-        if (!uploadError) {
-          // SECURITY: Store the file PATH, not a public URL.
-          // Dashboard generates a signed URL (1h expiry) on demand.
-          // Bucket is private — public URL would 404 anyway.
-          attachmentUrl = filePath;  // e.g., "TKT-019/payroll.pdf"
+      if (uploadError) {
+        console.error(`Storage upload error (attachment ${i}):`, uploadError.message);
+        continue;
+      }
 
-          // Insert attachment record
-          const { data: attRecord } = await supabase
-            .from('ticket_attachments')
-            .insert({
-              ticket_id: ticketId,
-              file_name: originalName,
-              mime_type: mime,
-              storage_url: attachmentUrl,  // path, not URL
-              size_bytes: buffer.length,
-            })
-            .select('id')
-            .single();
+      // SECURITY: Store the file PATH, not a public URL.
+      // Dashboard generates a signed URL (1h expiry) on demand; bucket is private.
+      const { data: attRecord, error: attErr } = await supabase
+        .from('ticket_attachments')
+        .insert({
+          ticket_id: ticketId,
+          file_name: originalName,
+          mime_type: mime,
+          storage_url: storagePath,  // path, not URL
+          size_bytes: buffer.length,
+        })
+        .select('id')
+        .single();
 
-          if (attRecord) attachmentId = attRecord.id;
-        } else {
-          console.error('Storage upload error:', uploadError.message);
+      if (attErr || !attRecord) {
+        console.error(`ticket_attachments insert error (attachment ${i}):`, attErr?.message);
+        continue;
+      }
+
+      attachmentId = attRecord.id;
+      if (i === 0) firstAttachmentId = attachmentId;
+
+      // Per-attachment vision result — only write if the caller actually ran vision
+      // on this specific attachment. A bank slip in a Pattern Z email may not have
+      // vision data even if the payroll PDF does.
+      if (att.vision_parsed) {
+        try {
+          await supabase.from('ticket_vision_results').insert({
+            ticket_id: ticketId,
+            attachment_id: attachmentId,
+            vision_parsed: true,
+            vision_confidence: att.vision_confidence || 0,
+            vision_status: att.vision_status || 'none',
+            document_type: att.document_type || '',
+            document_signers: att.document_signers || [],
+            amount_on_document: att.amount_on_document || 0,
+            depositor_name: att.depositor_name || '',
+            remark: att.remark || '',
+            transaction_id: att.transaction_id || '',
+          });
+        } catch (e) {
+          console.error(`ticket_vision_results insert error (attachment ${i}):`, e.message);
+          // Non-blocking — attachment row already created
         }
       }
     } catch (e) {
-      console.error('Attachment upload failed:', e.message);
-      // Non-blocking — ticket saves without attachment
-    }
-  }
-
-  // === STEP 4: Insert vision results into ticket_vision_results ===
-  if (data.vision_parsed) {
-    try {
-      await supabase.from('ticket_vision_results').insert({
-        ticket_id: ticketId,
-        attachment_id: attachmentId,
-        vision_parsed: true,
-        vision_confidence: data.vision_confidence || 0,
-        vision_status: data.vision_status || 'none',
-        document_type: data.document_type || '',
-        document_signers: data.document_signers || [],
-        amount_on_document: data.amount_on_document || 0,
-        depositor_name: data.depositor_name || '',
-        remark: data.remark || '',
-        transaction_id: data.transaction_id || '',
-      });
-    } catch (e) {
-      console.error('ticket_vision_results insert error:', e.message);
+      console.error(`Attachment ${i} processing failed:`, e.message);
+      // Non-blocking — continue with remaining attachments
     }
   }
 
