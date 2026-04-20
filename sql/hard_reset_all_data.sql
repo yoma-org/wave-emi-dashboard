@@ -95,9 +95,14 @@ SELECT
 
 -- Expected result: all zeros.
 
--- Confirm worker_config is untouched (should show > 0 rows, i.e., the
--- worker_url + webhook_secret are still there for the v13.2 trigger to use)
-SELECT COUNT(*) AS worker_config_preserved FROM worker_config;
+-- Confirm worker_config is untouched (schema: id, worker_url, webhook_secret,
+-- updated_at — single-row table with id=1). url_len ~60, secret_len=64.
+SELECT
+  id,
+  LENGTH(worker_url) AS url_len,
+  LENGTH(webhook_secret) AS secret_len,
+  updated_at
+FROM worker_config;
 
 -- Confirm legacy tickets is gone
 SELECT CASE
