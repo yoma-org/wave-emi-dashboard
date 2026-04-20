@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAN-47 — Multi-Attachment UI Mockup v3 (Side-by-Side, Human-in-Loop)</title>
+<style>
+  :root{
+    --navy:#001E4E;--blue:#0057B8;--blue-light:#1a7fe8;--accent:#00C2D4;
+    --bg:#f8fafc;--card:#ffffff;--text:#0f172a;--muted:#64748b;
+    --border:#e2e8f0;--border-strong:#cbd5e1;
+    --success:#16a34a;--warn:#d97706;--danger:#dc2626;
+    --shadow:0 1px 3px rgba(0,0,0,.1);
+    --shadow-lg:0 4px 16px rgba(0,0,0,.1);
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding:32px 16px}
+  .page{max-width:1340px;margin:0 auto}
+  h1{color:var(--navy);font-size:28px;margin-bottom:8px;letter-spacing:-.02em}
+  h2{color:var(--navy);font-size:20px;margin:32px 0 12px;letter-spacing:-.01em;border-bottom:2px solid var(--accent);padding-bottom:6px}
+  h3{color:var(--navy);font-size:16px;margin-bottom:8px}
+  h4{color:var(--navy);font-size:14px;margin:12px 0 6px}
+  .lead{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:var(--shadow)}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .badge-wave{background:var(--accent);color:var(--navy)}
+  .badge-new{background:#16a34a;color:#fff}
+  .badge-rev{background:#8b5cf6;color:#fff}
+  .badge-summary{background:var(--navy);color:#fff}
+  .badge-warn{background:#fef3c7;color:#92400e}
+  .badge-success{background:#dcfce7;color:#166534}
+  .badge-danger{background:#fee2e2;color:#991b1b}
+  code{background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px;color:var(--navy);font-family:'Menlo',monospace}
+  /* PRINCIPLE — top banner */
+  .principle{background:linear-gradient(135deg,var(--navy) 0%,#002a6b 100%);color:#fff;border-radius:var(--radius);padding:28px 32px;margin-bottom:28px;box-shadow:var(--shadow-lg)}
+  .principle h2{color:var(--accent);border:none;padding:0;margin:0 0 12px;font-size:22px}
+  .principle .tagline{font-size:16px;color:var(--accent);font-weight:600;margin-bottom:14px;letter-spacing:.02em}
+  .principle-tenets{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
+  .tenet{background:rgba(255,255,255,.07);border-left:3px solid var(--accent);padding:14px 16px;border-radius:6px}
+  .tenet .n{font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .tenet .t{font-size:14px;color:#fff;font-weight:600;margin:4px 0}
+  .tenet .d{font-size:12px;color:#c7d2fe;line-height:1.5}
+  /* CHANGELOG */
+  .changelog{background:#f5f3ff;border-left:4px solid #8b5cf6;padding:14px 18px;border-radius:6px;margin-bottom:24px}
+  .changelog h3{color:#6b21a8;margin-bottom:8px}
+  .changelog ul{padding-left:22px;font-size:13px}
+  .changelog li{margin:3px 0}
+  /* Pipeline diagram */
+  .pipeline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;font-family:'Menlo',monospace;margin-top:4px}
+  .pipe-node{background:#e0f2fe;border:1px solid #0284c7;border-radius:6px;padding:8px 10px;color:#0c4a6e;font-weight:600}
+  .pipe-node.new{background:#fef9c3;border-color:#ca8a04;color:#713f12}
+  .pipe-node.reject{background:#fee2e2;border-color:#dc2626;color:#991b1b}
+  .pipe-node.ok{background:#dcfce7;border-color:#16a34a;color:#166534}
+  .pipe-arrow{color:var(--muted);font-weight:700}
+  .pipe-loop{background:#fffbeb;border:1px dashed #d97706;padding:10px 14px;border-radius:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pipe-gate{background:#f3e8ff;border:2px solid #9333ea;padding:10px 14px;border-radius:20px;color:#6b21a8;font-weight:700;font-family:'Menlo',monospace;font-size:12px}
+  /* Ticket modal */
+  .ticket-modal{background:#fff;border:1px solid var(--border-strong);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-lg)}
+  .ticket-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid var(--border)}
+  .ticket-header h3{font-size:18px;margin-bottom:6px}
+  .ticket-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .ticket-badges{display:flex;gap:6px;flex-wrap:wrap}
+  .x-btn{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:0 8px}
+  /* Tab strip */
+  .tabstrip{display:flex;gap:2px;border-bottom:2px solid var(--navy);margin-bottom:0;overflow-x:auto}
+  .tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .tab.summary{background:var(--accent);color:var(--navy)}
+  .tab.summary.active{background:var(--navy);color:var(--accent)}
+  .tab-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+  .tab-dot.green{background:#16a34a}
+  .tab-dot.yellow{background:#eab308}
+  .tab-dot.red{background:#dc2626}
+  /* Tab content panel */
+  .tab-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:20px;border-radius:0 0 var(--radius) var(--radius);min-height:240px}
+  /* Collapsible email preview */
+  .email-preview{border:1px solid var(--border-strong);border-radius:8px;margin-bottom:20px;overflow:hidden}
+  .email-preview-header{background:var(--bg);padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--navy);border-left:3px solid var(--blue)}
+  .email-preview-body{padding:14px;font-size:13px;color:var(--text);background:#fafbfc;display:none}
+  .email-preview.open .email-preview-body{display:block}
+  .email-preview .arrow{color:var(--muted);transition:transform .2s}
+  .email-preview.open .arrow{transform:rotate(90deg)}
+  .email-field{display:grid;grid-template-columns:110px 1fr;gap:12px;margin-bottom:6px;font-size:12px}
+  .email-field .k{color:var(--muted);font-weight:600}
+  .email-body-text{background:#fff;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-top:10px;white-space:pre-wrap;font-size:12px;line-height:1.7;color:#334155;max-height:180px;overflow-y:auto}
+  /* MULTI-COLUMN SIDE-BY-SIDE (v3 hero table) */
+  table.multisbs{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:13px;table-layout:fixed}
+  table.multisbs th{text-align:left;padding:10px 8px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;background:var(--bg);border-bottom:2px solid var(--border-strong)}
+  table.multisbs th.col-field{width:160px}
+  table.multisbs th.col-match{width:60px;text-align:center}
+  table.multisbs th.col-email{background:#eff6ff;color:#1e40af}
+  table.multisbs th.col-att{background:#fefce8;color:#854d0e}
+  table.multisbs td{padding:10px 8px;background:var(--bg);vertical-align:top;font-size:13px;word-wrap:break-word}
+  table.multisbs tr.match td{background:#dcfce7}
+  table.multisbs tr.mismatch td{background:#fef3c7}
+  table.multisbs tr.neutral td{background:#fafbfc}
+  table.multisbs tr.match td.source-label{background:#bbf7d0}
+  table.multisbs tr.neutral td.source-label{background:#f1f5f9}
+  .match-icon{text-align:center;font-weight:700;width:60px}
+  .field-label{font-weight:700;color:var(--navy);font-size:13px}
+  .not-extracted{color:var(--muted);font-style:italic;font-size:12px}
+  .extracted{color:#166534;font-weight:600}
+  .src-chip{display:inline-block;font-size:9px;background:var(--accent);color:var(--navy);padding:1px 5px;border-radius:3px;font-weight:800;margin-right:4px;vertical-align:middle}
+  /* Side-by-side table (per-attachment legacy) */
+  table.sbs{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:13px}
+  table.sbs th{text-align:left;padding:8px;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  table.sbs td{padding:8px 10px;background:var(--bg);vertical-align:top}
+  table.sbs tr.match td{background:#dcfce7}
+  table.sbs tr.partial td{background:#fef3c7}
+  /* Three-Way Match VISUAL box (no PASS assertion in v3) */
+  .twm-box{background:#fff;border:2px solid var(--accent);border-radius:10px;padding:18px;margin:16px 0}
+  .twm-box h4{color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .twm-box .twm-note{font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic}
+  .twm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .twm-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+  .twm-card .src{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.03em;margin-bottom:6px}
+  .twm-card .amount{font-size:20px;font-weight:800;color:var(--navy);font-family:'Menlo',monospace}
+  .twm-card .amount.empty{color:var(--muted);font-style:italic;font-size:14px;font-weight:500}
+  .twm-card .note{font-size:11px;color:var(--muted);margin-top:6px}
+  .twm-card.highlight{background:#dcfce7;border-color:#16a34a}
+  /* Flag row */
+  .flag-row{background:#fef3c7;border-left:4px solid #eab308;padding:12px;border-radius:6px;margin-top:16px;font-size:13px}
+  .flag-row b{color:#92400e}
+  /* Rejection */
+  .reject-card{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:16px;margin-top:16px}
+  .reject-card h4{color:#991b1b;margin-bottom:6px;font-size:14px}
+  .reject-card .email-preview-rej{background:#fff;padding:12px;border-radius:6px;font-size:12px;margin-top:6px;color:#7f1d1d;white-space:pre-wrap;border:1px solid #fca5a5;font-family:'Menlo',monospace;line-height:1.6}
+  /* Action bar */
+  .action-bar{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .action-bar .left-notes{margin-right:auto;font-size:12px;color:var(--muted);align-self:center}
+  .btn{padding:10px 18px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none}
+  .btn-primary{background:var(--navy);color:#fff}
+  .btn-ghost{background:var(--bg);color:var(--navy);border:1px solid var(--border-strong)}
+  .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .btn-warn{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+  .btn-icon{padding:5px 10px;font-size:11px;background:var(--bg);color:var(--navy);border:1px solid var(--border-strong);border-radius:6px;cursor:pointer}
+  /* CSV download dialog (NEW v3) */
+  .dialog{background:#fff;border:2px solid var(--navy);border-radius:10px;padding:18px;margin-top:14px;max-width:500px;box-shadow:var(--shadow-lg)}
+  .dialog h4{color:var(--navy);margin-bottom:12px}
+  .dialog .opt{padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer}
+  .dialog .opt.selected{background:#dcfce7;border-color:#16a34a}
+  .dialog .opt.disabled{opacity:.4;cursor:not-allowed}
+  .dialog .radio{width:16px;height:16px;border:2px solid var(--border-strong);border-radius:50%;flex-shrink:0}
+  .dialog .opt.selected .radio{background:var(--success);border-color:var(--success)}
+  .dialog .opt-text{flex:1;font-size:13px}
+  .dialog .opt-text b{display:block;color:var(--navy);margin-bottom:2px}
+  .dialog .opt-text small{color:var(--muted);font-size:11px}
+  /* Notes */
+  .note{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:6px;font-size:13px;margin-top:12px;color:#713f12}
+  .note b{color:#7c2d12}
+  .note.good{background:#ecfdf5;border-color:#10b981;color:#064e3b}
+  .note.good b{color:#065f46}
+  .note.principle{background:#f5f3ff;border-color:#8b5cf6;color:#4c1d95}
+  .note.principle b{color:#5b21b6}
+  /* Taxonomy table */
+  table.tx{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  table.tx th{background:var(--navy);color:#fff;text-align:left;padding:10px;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  table.tx td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.tx tr.sys-fail td{background:#eff6ff}
+  table.tx tr.soft td{background:#fefce8}
+  .cat-chip{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase}
+  .cat-hard{background:#fee2e2;color:#991b1b}
+  .cat-sys{background:#dbeafe;color:#1e40af}
+  .cat-soft{background:#fef3c7;color:#92400e}
+  /* Decision flow */
+  .decision-flow{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:12px}
+  .decision-flow .df-row{display:flex;align-items:center;gap:16px;margin:8px 0;flex-wrap:wrap}
+  .decision-flow .df-q{background:#f3e8ff;border:1px solid #9333ea;padding:10px 14px;border-radius:20px;font-weight:600;color:#6b21a8;font-size:13px}
+  .decision-flow .df-yes{background:#dcfce7;border:1px solid #16a34a;padding:10px 14px;border-radius:6px;color:#166534;font-size:13px;font-weight:600}
+  .decision-flow .df-no{background:#fee2e2;border:1px solid #dc2626;padding:10px 14px;border-radius:6px;color:#991b1b;font-size:13px;font-weight:600}
+  .decision-flow .df-arrow{color:var(--muted);font-weight:700}
+  /* Matrix */
+  table.matrix{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  table.matrix th{background:var(--bg);text-align:left;padding:10px;color:var(--navy);font-size:12px;text-transform:uppercase}
+  table.matrix td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.matrix tr.primary td{background:#f0f9ff}
+  /* Templates */
+  .tmpl{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+  .tmpl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--border)}
+  .tmpl-head h4{margin:0}
+  .tmpl pre{background:#fafbfc;padding:12px;border-radius:6px;font-size:12px;white-space:pre-wrap;line-height:1.6;color:#334155;font-family:'Menlo',monospace}
+  /* Sketch label */
+  .real-data-label{display:inline-block;background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:8px;border:1px solid #86efac}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>KAN-47 — Multi-Attachment UI Mockup <span class="badge badge-rev">v3 · Side-by-Side · Human-in-Loop</span></h1>
+  <p class="lead">Rendered using Nyan San Kim's real NSK disbursement email (2 attachments: payment list XLSX + bank slip PNG) provided by Vinh. Embraces the principle that this system's job is toil removal, not autonomous decisions. Summary = multi-column side-by-side, no aggregation, no clever inference.</p>
+
+  <!-- DESIGN PRINCIPLE BANNER -->
+  <div class="principle">
+    <h2>Design principle</h2>
+    <div class="tagline">&ldquo;AI Assists, Human Decides&rdquo;</div>
+    <p style="font-size:14px;color:#c7d2fe;line-height:1.6">This system's job is to remove the <b>repeated data-entry toil</b> from bankers — copy, paste, manual typing, cross-checking numbers. It is <b>not</b> an autonomous disbursement system. Every decision (approve, reject, flag, return) still belongs to Finance. AI extracts, surfaces, and compares; humans decide.</p>
+
+    <div class="principle-tenets">
+      <div class="tenet">
+        <div class="n">Tenet 1</div>
+        <div class="t">Toil removal, not automation</div>
+        <div class="d">We remove data entry from bankers. We do not replace their judgment.</div>
+      </div>
+      <div class="tenet">
+        <div class="n">Tenet 2</div>
+        <div class="t">Extract &middot; Display &middot; Compare</div>
+        <div class="d">AI's three verbs. Never "decide," never "approve," never "infer intent."</div>
+      </div>
+      <div class="tenet">
+        <div class="n">Tenet 3</div>
+        <div class="t">Side-by-side over aggregation</div>
+        <div class="d">Consistency beats cleverness. One mental model for every ticket type.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="changelog">
+    <h3>What changed from v2</h3>
+    <ul>
+      <li><b>Added "Design Principle" banner</b> — human-in-loop philosophy made explicit at the top of all future design docs</li>
+      <li><b>Summary tab = multi-column side-by-side</b> — no aggregation, no dedupe, no "sum across attachments." Email column + N attachment columns. Finance eyeballs.</li>
+      <li><b>Killed the "not payroll" hard-fail rejection</b> — bank slips and supporting docs are valid, not rejections. Fixes the NSK bug.</li>
+      <li><b>Killed `document_type` self-classification</b> — unnecessary once we stop aggregating. Gemini just extracts what's there.</li>
+      <li><b>Three-Way Match = visual comparison</b>, not an automated "PASS" assertion. Shows all 3 amount sources, Finance eyeballs alignment.</li>
+      <li><b>Simplified rejection taxonomy</b> — 3 client-fail categories only: password / unreadable / too-many. No "confidence threshold" as rejection trigger.</li>
+      <li><b>CSV download with source-tab picker</b> — banker selects which attachment's employee data becomes the Utiba CSV.</li>
+      <li><b>Uses real NSK email data</b> from Vinh's Teams share — not synthetic Capital Taiyo.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 1: PIPELINE FLOW -->
+  <div class="section">
+    <h2>1. Pipeline flow — v13.3 (simplified)</h2>
+    <p class="lead">Fewer gates than v2. Loop over all attachments, extract whatever Gemini finds, reject only on infrastructure failure (our problem) or hard-fail categories (password/unreadable/too-many). "Not payroll" is no longer a rejection trigger — we trust Finance to eyeball.</p>
+
+    <h4>Pre-flight</h4>
+    <div class="pipeline">
+      <span class="pipe-node">Webhook (Worker Dispatch)</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">Claim &amp; Reconstitute</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">Prepare for AI v3</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node new">Count Attachments (new)</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-gate">N &gt; 5?</span>
+    </div>
+    <div class="pipeline" style="margin-left:40px;margin-top:6px">
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node reject">Reject: template 3 "too many attachments"</span>
+    </div>
+
+    <h4 style="margin-top:18px">Loop (sequential, inside single n8n execution)</h4>
+    <div class="pipe-loop">
+      <span class="pipe-arrow">for each attachment i = 1 to N:</span>
+      <span class="pipe-node">Gemini Extract (whatever's there)</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">AI Parse &amp; Validate</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node new">Classify: pass / password / unreadable / system-error</span>
+    </div>
+    <div class="note"><b>Note v3 vs v2:</b> No more "not payroll" classification. If Gemini can read the file, it's a pass — regardless of whether the content looks like payroll, a bank slip, a signature page, or anything else. Finance decides if it's useful.</div>
+
+    <h4 style="margin-top:18px">Gate after loop</h4>
+    <div class="pipeline">
+      <span class="pipe-gate">Any system-error?</span>
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node new">Silent retry 3x backoff &rarr; sys-admin escalation</span>
+    </div>
+    <div class="pipeline" style="margin-top:8px">
+      <span class="pipe-gate">Any password/unreadable?</span>
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node reject">Reject whole email, diagnostic listing all failed files</span>
+    </div>
+    <div class="pipeline" style="margin-top:8px">
+      <span class="pipe-arrow">Otherwise:</span>
+      <span class="pipe-node ok">All pass &rarr; Package attachments[] &rarr; Webhook &rarr; Dashboard renders tabs</span>
+    </div>
+
+    <div class="note good"><b>Execution budget:</b> Still 1 n8n execution per email. JS for-loop inside one Code node, not SplitInBatches.</div>
+  </div>
+
+  <!-- SECTION 2: SUMMARY TAB WITH NSK REAL DATA -->
+  <div class="section">
+    <h2>2. Ticket detail — Summary tab (NSK real case) <span class="real-data-label">Real data from Vinh's Teams</span></h2>
+    <p class="lead">Multi-column side-by-side: Email body on the left, Payment List (Tab 1) in the middle, Bank Slip (Tab 2) on the right. No sums. No dedupe. Finance eyeballs each row and sees where the numbers agree or diverge.</p>
+
+    <div class="ticket-modal">
+      <div class="ticket-header">
+        <div>
+          <h3>TKT-107 &middot; Disbursement Request for NSK</h3>
+          <div class="ticket-meta">Nov 28, 2025 at 2:15 PM &middot; Processed in 14s &middot; from: Nyan San Kim</div>
+          <div class="ticket-badges">
+            <span class="badge badge-wave">MA</span>
+            <span class="badge badge-success">Low risk</span>
+            <span class="badge badge-summary">2 attachments &middot; side-by-side</span>
+          </div>
+        </div>
+        <button class="x-btn">&times;</button>
+      </div>
+
+      <div class="tabstrip">
+        <div class="tab summary active"><span class="tab-dot green"></span> Summary</div>
+        <div class="tab"><span class="tab-dot green"></span> 1. 01. Payment List for NSK.xlsx</div>
+        <div class="tab"><span class="tab-dot green"></span> 2. Designer.png (bank slip)</div>
+      </div>
+
+      <div class="tab-panel">
+        <!-- EMAIL PREVIEW -->
+        <div class="email-preview open">
+          <div class="email-preview-header">
+            <span>&#9993; Original Email &middot; 2 attachments &middot; click to collapse</span>
+            <span class="arrow">&#x25BC;</span>
+          </div>
+          <div class="email-preview-body">
+            <div class="email-field"><span class="k">From</span><span>Nyan San Kim &lt;nyan.san.kim@example.com&gt;</span></div>
+            <div class="email-field"><span class="k">To</span><span>emoney@zeyalabs.ai</span></div>
+            <div class="email-field"><span class="k">Subject</span><span>Disbursement Request for NSK</span></div>
+            <div class="email-field"><span class="k">Received</span><span>Nov 28, 2025, 2:15 PM GMT+6:30</span></div>
+            <div class="email-field"><span class="k">Attachments</span><span>Designer.png (4 MB) &middot; 01. Payment List for NSK.xlsx (322 KB)</span></div>
+            <div class="email-body-text">Hi,
+
+I'd like to request for disbursement to the attached list. I also attached the bank slip.
+
+Best regards,
+Kim</div>
+          </div>
+        </div>
+
+        <h3>Multi-column side-by-side <span style="font-size:12px;color:var(--muted);font-weight:500">&middot; every field, every source, Finance eyeballs</span></h3>
+
+        <table class="multisbs">
+          <thead>
+            <tr>
+              <th class="col-field">Field</th>
+              <th class="col-email">From Email</th>
+              <th class="col-att">From Payment List <span class="src-chip">XLSX</span></th>
+              <th class="col-att">From Bank Slip <span class="src-chip">PNG</span></th>
+              <th class="col-match">Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="neutral">
+              <td class="field-label">Requester</td>
+              <td class="extracted">Nyan San Kim (from header)</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Distribution Title</td>
+              <td class="extracted">Disbursement Request for NSK</td>
+              <td class="extracted">NSK November'25 Distribution Payment List_2nd batch</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="match-icon" style="color:#eab308">&sim;</td>
+            </tr>
+            <tr class="match">
+              <td class="field-label">Total Amount</td>
+              <td class="not-extracted">Not stated in body</td>
+              <td class="extracted">5,242,700 MMK<br><small style="color:var(--muted)">(52 rows &times; 100,000)</small></td>
+              <td class="extracted">+5,242,700.00 MMK</td>
+              <td class="match-icon" style="color:var(--success)">&check;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Beneficiary Count</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="extracted">52 beneficiaries</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Requested Date</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="extracted">12-05-25</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Bank Transaction Date</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="extracted">28 Nov 2025, 14:15</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Bank Reference ID</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="extracted">DUMMY-REF-20251128-XXXX</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Source Account</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="extracted">Sample Bank Ltd.</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Destination Wallet</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="extracted">12345678900000<br><small style="color:var(--muted)">Example Digital Wallet, Call Deposit</small></td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Townships (from list)</td>
+              <td class="not-extracted">Not stated</td>
+              <td class="extracted">Thanbyuzayat, Hlaingbwe, Hpa-An, Myawaddy, +1 more</td>
+              <td class="not-extracted">Not in document</td>
+              <td class="match-icon" style="color:var(--muted)">&mdash;</td>
+            </tr>
+            <tr class="neutral">
+              <td class="field-label">Purpose</td>
+              <td class="extracted">disbursement to attached list</td>
+              <td class="extracted">Distribution Payment (title)</td>
+              <td class="extracted">OtherBankTransfer</td>
+              <td class="match-icon" style="color:#eab308">&sim;</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:11px;color:var(--muted);margin-top:8px"><b>Legend:</b> <span style="background:#dcfce7;padding:2px 6px;border-radius:4px">&check; values agree where present</span> &nbsp; <span style="background:#fef3c7;padding:2px 6px;border-radius:4px">&sim; partial (semantically similar, different wording)</span> &nbsp; <span style="color:var(--muted)">&mdash; only one source has the value (expected)</span></div>
+
+        <!-- THREE-WAY MATCH AS VISUAL COMPARISON -->
+        <div class="twm-box">
+          <h4>Amount Reconciliation</h4>
+          <div class="twm-note">Three sources, shown side-by-side. Finance confirms alignment visually &mdash; system does not assert PASS/FAIL.</div>
+          <div class="twm-grid">
+            <div class="twm-card">
+              <div class="src">Email Body</div>
+              <div class="amount empty">Not stated</div>
+              <div class="note">Kim's email did not mention an amount</div>
+            </div>
+            <div class="twm-card highlight">
+              <div class="src">Payment List Sum</div>
+              <div class="amount">5,242,700</div>
+              <div class="note">52 beneficiaries &times; 100,000 MMK</div>
+            </div>
+            <div class="twm-card highlight">
+              <div class="src">Bank Slip</div>
+              <div class="amount">5,242,700</div>
+              <div class="note">Received from Sample Bank</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flag-row">
+          <b>&#9888; Observation for Finance:</b> Payment list "Requested Date" is 12-05-25 but bank slip transaction date is 28 Nov 2025. These can legitimately differ (bank deposit date vs payroll execution date). Confirm this matches Wave's expected flow.
+        </div>
+
+        <div class="action-bar">
+          <span class="left-notes">Ticket-level actions (see per-tab for file-specific)</span>
+          <button class="btn btn-danger">Return to Client</button>
+          <button class="btn btn-warn">Flag for Review</button>
+          <button class="btn btn-primary">Approve &amp; Download CSV &#9662;</button>
+        </div>
+
+        <!-- CSV DOWNLOAD DIALOG -->
+        <div class="dialog">
+          <h4>Download CSV for Utiba upload</h4>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Pick which attachment's employee data to generate the CSV from. System pre-selects the one with the most complete list.</div>
+
+          <div class="opt selected">
+            <div class="radio"></div>
+            <div class="opt-text">
+              <b>Tab 1 &mdash; 01. Payment List for NSK.xlsx</b>
+              <small>52 beneficiaries, MSISDN + Amount + POI + Township columns present</small>
+            </div>
+          </div>
+          <div class="opt disabled">
+            <div class="radio"></div>
+            <div class="opt-text">
+              <b>Tab 2 &mdash; Designer.png (bank slip)</b>
+              <small>No beneficiary data in this attachment &mdash; not available</small>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+            <button class="btn btn-ghost btn-sm">Cancel</button>
+            <button class="btn btn-primary btn-sm">Generate CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note principle"><b>Why no "sum across attachments" or "dedupe employees":</b> Aggregation hides source. If we silently sum a bank slip's deposit amount plus a payment list's disbursement amount, Finance can't trace the math back. Side-by-side preserves provenance &mdash; every number points to a specific tab. When Finance approves 5,242,700, they know exactly which source(s) backed that number.</div>
+  </div>
+
+  <!-- SECTION 3: PER-TAB VIEW — PAYMENT LIST -->
+  <div class="section">
+    <h2>3. Per-attachment tab &mdash; Tab 1: Payment List <span class="real-data-label">Real data</span></h2>
+    <p class="lead">Per-tab view focuses on one file at a time. Shows side-by-side of email facts vs this specific attachment. Reuses existing <code>kan36RenderSideBySide()</code>.</p>
+
+    <div class="ticket-modal">
+      <div class="ticket-header">
+        <div>
+          <h3>TKT-107 &middot; Disbursement Request for NSK</h3>
+          <div class="ticket-meta">Nov 28, 2025 at 2:15 PM</div>
+          <div class="ticket-badges">
+            <span class="badge badge-wave">MA</span>
+            <span class="badge badge-success">Low risk</span>
+          </div>
+        </div>
+        <button class="x-btn">&times;</button>
+      </div>
+
+      <div class="tabstrip">
+        <div class="tab summary"><span class="tab-dot green"></span> Summary</div>
+        <div class="tab active"><span class="tab-dot green"></span> 1. 01. Payment List for NSK.xlsx</div>
+        <div class="tab"><span class="tab-dot green"></span> 2. Designer.png (bank slip)</div>
+      </div>
+
+      <div class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <h3 style="margin-bottom:4px">01. Payment List for NSK.xlsx</h3>
+            <div style="font-size:12px;color:var(--muted)">Parsed via SheetJS &middot; 52 rows &middot; 322 KB</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-icon">Preview Excel</button>
+            <button class="btn-icon">Download this CSV</button>
+            <button class="btn-icon">Add note</button>
+          </div>
+        </div>
+
+        <table class="sbs">
+          <thead>
+            <tr>
+              <th class="field-label" style="width:160px">Field</th>
+              <th>From Email</th>
+              <th>From Payment List (XLSX)</th>
+              <th class="match-icon">Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="partial"><td class="field-label">Title</td><td>Disbursement Request for NSK</td><td>NSK November'25 Distribution Payment List_2nd batch</td><td class="match-icon" style="color:#eab308">&sim;</td></tr>
+            <tr class="partial"><td class="field-label">Total Amount</td><td><span class="not-extracted">Not stated</span></td><td>5,242,700 MMK (sum of 52 rows &times; 100K)</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Beneficiary Count</td><td><span class="not-extracted">Not stated</span></td><td>52</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Requested Date</td><td><span class="not-extracted">Not stated</span></td><td>12-05-25</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Townships</td><td><span class="not-extracted">Not stated</span></td><td>Thanbyuzayat, Hlaingbwe, Hpa-An, Myawaddy, +1</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Requester</td><td>Nyan San Kim</td><td><span class="not-extracted">Not in list</span></td><td class="match-icon">&mdash;</td></tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin-top:20px">Beneficiary list (first 8 of 52)</h4>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px">
+          <thead><tr style="background:var(--bg)"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Sr</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Beneficiary</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border)">Amount</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">MSISDN</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">POI</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Township</th></tr></thead>
+          <tbody style="font-family:'Menlo',monospace;font-size:11px">
+            <tr><td style="padding:5px 8px">1</td><td style="padding:5px 8px">Beneficiary 1</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456789</td><td style="padding:5px 8px">194242</td><td style="padding:5px 8px">Thanbyuzayat</td></tr>
+            <tr><td style="padding:5px 8px">2</td><td style="padding:5px 8px">Beneficiary 2</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456790</td><td style="padding:5px 8px">175166</td><td style="padding:5px 8px">Thanbyuzayat</td></tr>
+            <tr><td style="padding:5px 8px">3</td><td style="padding:5px 8px">Beneficiary 3</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456791</td><td style="padding:5px 8px">091959</td><td style="padding:5px 8px">Thanbyuzayat</td></tr>
+            <tr><td style="padding:5px 8px">6</td><td style="padding:5px 8px">Beneficiary 6</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456794</td><td style="padding:5px 8px">106127</td><td style="padding:5px 8px">Hlaingbwe</td></tr>
+            <tr><td style="padding:5px 8px">9</td><td style="padding:5px 8px">Beneficiary 9</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456797</td><td style="padding:5px 8px">088291</td><td style="padding:5px 8px">Hpa-An</td></tr>
+            <tr><td style="padding:5px 8px">18</td><td style="padding:5px 8px">Beneficiary 18</td><td style="padding:5px 8px;text-align:right">100,000</td><td style="padding:5px 8px">9123456806</td><td style="padding:5px 8px">067845</td><td style="padding:5px 8px">Myawaddy</td></tr>
+            <tr><td colspan="6" style="padding:5px 8px;text-align:center;color:var(--muted);font-style:italic">&hellip; 46 more rows (scrollable) &hellip;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: PER-TAB VIEW — BANK SLIP -->
+  <div class="section">
+    <h2>4. Per-attachment tab &mdash; Tab 2: Bank Slip <span class="real-data-label">Real data</span></h2>
+    <p class="lead">The bank slip has fundamentally different fields from a payroll list. In v2 my plan would have rejected this as "not payroll." In v3, we show whatever Gemini extracted and let Finance use it as supporting evidence.</p>
+
+    <div class="ticket-modal">
+      <div class="ticket-header">
+        <div>
+          <h3>TKT-107 &middot; Disbursement Request for NSK</h3>
+          <div class="ticket-meta">Nov 28, 2025 at 2:15 PM</div>
+          <div class="ticket-badges">
+            <span class="badge badge-wave">MA</span>
+            <span class="badge badge-success">Low risk</span>
+          </div>
+        </div>
+        <button class="x-btn">&times;</button>
+      </div>
+
+      <div class="tabstrip">
+        <div class="tab summary"><span class="tab-dot green"></span> Summary</div>
+        <div class="tab"><span class="tab-dot green"></span> 1. 01. Payment List for NSK.xlsx</div>
+        <div class="tab active"><span class="tab-dot green"></span> 2. Designer.png (bank slip)</div>
+      </div>
+
+      <div class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <h3 style="margin-bottom:4px">Designer.png (bank slip)</h3>
+            <div style="font-size:12px;color:var(--muted)">Extracted via Gemini 3 Vision &middot; confidence 96% &middot; 4 MB</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-icon">Preview image</button>
+            <button class="btn-icon">Add note</button>
+          </div>
+        </div>
+
+        <table class="sbs">
+          <thead>
+            <tr>
+              <th class="field-label" style="width:180px">Field</th>
+              <th>From Email</th>
+              <th>From Bank Slip (PNG)</th>
+              <th class="match-icon">Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="partial"><td class="field-label">Transaction Date</td><td><span class="not-extracted">Not stated</span></td><td>28 Nov 2025, 14:15</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Reference ID</td><td><span class="not-extracted">Not stated</span></td><td>DUMMY-REF-20251128-XXXX</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Transaction Amount</td><td><span class="not-extracted">Not stated</span></td><td>+5,242,700.00 MMK</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Transfer From</td><td><span class="not-extracted">Not stated</span></td><td>Sample Bank Ltd.</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Transfer To</td><td><span class="not-extracted">Not stated</span></td><td>12345678900000 (Example Digital Wallet, Call Deposit)</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Transaction ID</td><td><span class="not-extracted">Not stated</span></td><td>DUMMY-TXN-ID-XXXX</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Transaction Type</td><td><span class="not-extracted">Not stated</span></td><td>Receive Bank Transfer</td><td class="match-icon">&mdash;</td></tr>
+            <tr class="partial"><td class="field-label">Purpose</td><td>disbursement to attached list</td><td>OtherBankTransfer</td><td class="match-icon" style="color:#eab308">&sim;</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:11px;color:var(--muted);margin-top:12px"><b>Per-tab note:</b> No "Download this CSV" for a bank slip &mdash; it has no beneficiary list. Only Payment List can produce a Utiba CSV.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: REJECTION CASE -->
+  <div class="section">
+    <h2>5. Rejection case &mdash; all-or-nothing, simplified taxonomy</h2>
+    <p class="lead">Only 3 client-fail triggers reject a whole email: password-protected, unreadable/corrupted, or too-many attachments. "Not recognized as payroll" is NOT a rejection trigger anymore.</p>
+
+    <div class="reject-card">
+      <div style="color:#991b1b;font-weight:700;margin-bottom:8px">&#9888; email_queue row status: <code>rejected</code> &middot; no ticket created</div>
+      <p><b>Example:</b> finance@xyz-corp.mm sends email with 3 attachments. Attachment 2 is a password-protected ZIP. Attachment 3 is a 0-byte corrupted image.</p>
+    </div>
+
+    <h4 style="margin-top:18px">Per-attachment outcomes (all 3 evaluated before deciding)</h4>
+    <table class="tx">
+      <thead><tr><th style="width:32px">#</th><th>Filename</th><th>Outcome</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>payroll_apr.pdf</td><td><span class="cat-chip" style="background:#dcfce7;color:#166534">&check; OK</span></td><td>Gemini extracted cleanly</td></tr>
+        <tr><td>2</td><td>hr_data.zip</td><td><span class="cat-chip cat-hard">FAIL</span></td><td>Password-protected</td></tr>
+        <tr><td>3</td><td>staff_photo.jpg</td><td><span class="cat-chip cat-hard">FAIL</span></td><td>0-byte file, corrupted</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:18px">Rejection email sent to client (lists BOTH issues at once)</h4>
+    <div class="reject-card">
+      <div class="email-preview-rej">From: emoney@zeyalabs.ai
+To: finance@xyz-corp.mm
+Subject: Re: April Payroll &mdash; Unable to Process
+
+Dear Sender,
+
+We received your email with 3 attachments, but our system was unable to
+process it because 2 of the attachments could not be read.
+
+Specifically:
+
+  &#x2718; hr_data.zip &mdash; The file is password-protected. Please
+    resend without password or encryption.
+
+  &#x2718; staff_photo.jpg &mdash; The file appears corrupted (0 bytes).
+    Please check the original and resend.
+
+To process your request, please resend your email with ALL 3 attachments
+together, fixing the issues above.
+
+If you believe this rejection is in error, reply with Reference ID:
+QR-20260420-R19F and our team will investigate.
+
+Thank you,
+Wave Money | E-Money Operations</div>
+    </div>
+
+    <div class="note good"><b>Evaluate-all, not fail-fast:</b> Client gets all failures in one diagnostic email &mdash; no back-and-forth ping-pong. Costs ~4&cent; in extra Gemini calls per rejected email, saves hours of client frustration.</div>
+  </div>
+
+  <!-- SECTION 6: FAILURE TAXONOMY + TEMPLATES -->
+  <div class="section">
+    <h2>6. Failure taxonomy &amp; rejection templates <span class="badge badge-rev">simpler</span></h2>
+    <p class="lead">Only 3 client-fail categories (down from 4 in v2). Gemini confidence is no longer a rejection trigger &mdash; low confidence just means "show what we got, let Finance judge."</p>
+
+    <table class="tx">
+      <thead><tr><th>Category</th><th>Definition</th><th>Fault</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: password</span></td><td>ZIP/PDF requires password</td><td>Client</td><td>Reject w/ template 1</td></tr>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: unreadable</span></td><td>0-byte, corrupted, or unsupported mime-type</td><td>Client</td><td>Reject w/ template 2</td></tr>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: too many</span></td><td>N &gt; 5 attachments</td><td>Client</td><td>Reject w/ template 3</td></tr>
+        <tr class="sys-fail"><td><span class="cat-chip cat-sys">SYSTEM-FAIL: infra</span></td><td>Gemini 429/5xx, timeout, Supabase down</td><td><b>Us</b></td><td>Silent retry 3x &rarr; sys-admin escalation</td></tr>
+        <tr class="soft"><td><span class="cat-chip cat-soft">SOFT-PASS: anything readable</span></td><td>File opens, Gemini returned something (even if not payroll)</td><td>Neither</td><td>Process &amp; display in tab. Finance eyeballs.</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:22px">Rejection email templates (3 + combined)</h4>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 1 &mdash; Password-protected</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has {N} attachment(s) that are password-protected or encrypted:
+
+  &#x2718; {filename} &mdash; password-protected
+
+Please resend all attachments without password protection.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 2 &mdash; Unreadable / corrupted</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has {N} attachment(s) that could not be read:
+
+  &#x2718; {filename} &mdash; appears corrupted ({bytes} bytes)
+
+Please check the file on your device, confirm it opens correctly,
+and resend.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 3 &mdash; Too many attachments</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Our system processes up to 5 attachments per email.
+Your email had {N}.
+
+Please split into separate emails, each with no more than 5 attachments.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Combined (auto-generated when multiple issues)</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has {M} attachment(s) that could not be processed:
+
+  &#x2718; {filename1} &mdash; {reason1}
+  &#x2718; {filename2} &mdash; {reason2}
+
+Please resend with ALL {N} attachments together, fixing the issues above.</pre>
+    </div>
+
+    <div class="note"><b>Copy review:</b> These drafts need Vinh's sign-off before first Myanmar production use. Softer tone / Myanmar-translation version TBD.</div>
+  </div>
+
+  <!-- SECTION 7: SYSTEM-FAIL VS CLIENT-FAIL -->
+  <div class="section">
+    <h2>7. System-fail vs client-fail routing</h2>
+    <p class="lead">Critical rule: we must NEVER reject a client's good email because Gemini had a bad minute. The classifier distinguishes our infrastructure failures from client-side issues.</p>
+
+    <div class="decision-flow">
+      <div class="df-row">
+        <div class="df-q">Did extraction fail?</div>
+        <div class="df-arrow">&rarr;</div>
+        <div class="df-yes">Yes</div>
+      </div>
+      <div class="df-row" style="margin-left:40px">
+        <div class="df-q">Error is 429 / 5xx / timeout / network?</div>
+        <div class="df-arrow">&rarr; YES</div>
+        <div style="background:#dbeafe;border:1px solid #1e40af;padding:10px 14px;border-radius:6px;font-size:13px;color:#1e3a8a">System-fail: silent retry 3x with backoff (1s, 3s, 9s). If still failing, escalate to sys-admin. Client sees nothing.</div>
+      </div>
+      <div class="df-row" style="margin-left:40px">
+        <div class="df-q">Error is password / corrupt / too-many?</div>
+        <div class="df-arrow">&rarr; YES</div>
+        <div class="df-no">Client-fail: classify into templates 1-3. Collect all client-fails, send ONE diagnostic rejection. email_queue.status=rejected. No ticket.</div>
+      </div>
+      <div class="df-row" style="margin-left:40px">
+        <div class="df-q">Otherwise (any readable content)?</div>
+        <div class="df-arrow">&rarr;</div>
+        <div class="df-yes">Pass &rarr; render in tab. Finance decides if useful.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 8: ACTION MATRIX -->
+  <div class="section">
+    <h2>8. Action matrix</h2>
+    <p class="lead">Approval is always ticket-level. Per-attachment actions are diagnostic. CSV download opens a source-picker dialog.</p>
+
+    <table class="matrix">
+      <thead><tr><th>Button</th><th>Lives on</th><th>Scope</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr class="primary"><td><b>Approve &amp; Download CSV</b> &#9662;</td><td>Summary tab</td><td>Whole ticket</td><td>Opens source-picker dialog &rarr; banker selects which tab's employee data becomes the Utiba CSV &rarr; generate + download + mark <code>APPROVED</code>. Disabled tabs (no beneficiary data) cannot be picked.</td></tr>
+        <tr><td><b>Flag for Review</b></td><td>Summary tab</td><td>Whole ticket</td><td><code>status=NEEDS_REVIEW</code>. Prompt for note. No CSV, no email.</td></tr>
+        <tr><td><b>Return to Client</b></td><td>Summary tab</td><td>Whole ticket</td><td>Operator-authored rejection email. <code>status=RETURNED</code>.</td></tr>
+        <tr><td>Preview File</td><td>Per-attachment tab</td><td>Single attachment</td><td>Inline render &mdash; PDF.js for PDFs, img for images, XLSX preview.</td></tr>
+        <tr><td>Download this CSV</td><td>Per-attachment tab (if beneficiary data)</td><td>Single attachment</td><td>Raw per-attachment CSV. Audit only. No status change.</td></tr>
+        <tr><td>Add note</td><td>Per-attachment tab</td><td>Single attachment</td><td>Banker annotation attached to this tab, surfaced in Summary flags.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 9: ENGINEERING FOOTPRINT -->
+  <div class="section">
+    <h2>9. Engineering footprint (simpler than v2)</h2>
+    <table class="matrix">
+      <thead><tr><th>Layer</th><th>New</th><th>Modified</th><th>Reused as-is</th></tr></thead>
+      <tbody>
+        <tr><td><b>n8n pipeline</b></td><td>Count Attachments node &middot; Sequential JS for-loop in Code node &middot; Classify outcome (pass/hard-fail/sys-fail) &middot; Rejection branch (3 templates)</td><td>Webhook payload: adds <code>attachments[]</code> array</td><td>Gemini Extract, AI Parse, Outlook, Claim/Mark, webhook endpoint</td></tr>
+        <tr><td><b>Dashboard</b></td><td><code>renderAttachmentTabs()</code>, <code>renderSummaryMultiSbs()</code>, CSV source-picker dialog, <code>renderEmailPreview()</code></td><td><code>openTicketDetail()</code> dispatches to tabs when <code>t.attachments.length &gt; 0</code></td><td><code>kan36RenderSideBySide()</code> (per tab), existing CSV generators</td></tr>
+        <tr><td><b>Webhook (api/)</b></td><td>&mdash;</td><td>Accepts <code>attachments[]</code> &middot; legacy single-payload fallback</td><td>Supabase insert, auth, shape validation</td></tr>
+        <tr><td><b>Supabase</b></td><td>&mdash;</td><td>&mdash;</td><td>JSONB <code>raw_payload</code> absorbs the new shape &mdash; no schema change</td></tr>
+      </tbody>
+    </table>
+    <div class="note good"><b>Effort:</b> 5-7 hours (back down from v2's 6-8 because we removed document_type classification and aggregation logic). Backward-compatible &mdash; existing single-attachment tickets keep rendering via legacy path.</div>
+  </div>
+
+  <!-- SECTION 10: DEFERRED -->
+  <div class="section">
+    <h2>10. Deferred questions</h2>
+    <ul style="padding-left:20px;font-size:14px;line-height:2">
+      <li><b>Rejection email copy review with Vinh</b> &mdash; templates 1-3 + combined need his sign-off + potential Myanmar translation before first production use.</li>
+      <li><b>Rejection rate-limit</b> &mdash; escalate to support after 3 rejections in 24h from same sender. Build when first abuse case appears.</li>
+      <li><b>Tab ordering &amp; naming</b> &mdash; ships with upload order + filename truncated at 20 chars.</li>
+      <li><b>"Download all attachments as ZIP"</b> for audit &mdash; backlog.</li>
+      <li><b>Real-sample stress test</b> &mdash; once Vinh gathers 3-5 real multi-attachment emails, re-render the mockup against them to catch edge cases. Especially Pattern X (multi-period) and Pattern Y (multi-entity) which the NSK case doesn't exercise.</li>
+    </ul>
+    <div class="note good"><b>Removed from v2 deferred list:</b> "Smart summary aggregation rules" &mdash; not needed (no aggregation in v3). "document_type self-classification" &mdash; not needed (no aggregation = no need to classify).</div>
+  </div>
+
+  <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid var(--border)">
+    Mockup v3 &middot; Wave EMI v13.3 design &middot; KAN-47 &middot; Side-by-Side &middot; Human-in-Loop &middot; 2026-04-20<br>
+    <small>Rendered with real NSK email data from Vinh's Teams share. Philosophy validated by DK.</small>
+  </div>
+
+</div>
+</body>
+</html>

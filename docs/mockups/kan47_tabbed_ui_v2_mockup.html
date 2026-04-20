@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAN-47 — Multi-Attachment UI Mockup v2 (All-or-Nothing)</title>
+<style>
+  :root{
+    --navy:#001E4E;--blue:#0057B8;--blue-light:#1a7fe8;--accent:#00C2D4;
+    --bg:#f8fafc;--card:#ffffff;--text:#0f172a;--muted:#64748b;
+    --border:#e2e8f0;--border-strong:#cbd5e1;
+    --success:#16a34a;--warn:#d97706;--danger:#dc2626;
+    --shadow:0 1px 3px rgba(0,0,0,.1);
+    --shadow-lg:0 4px 16px rgba(0,0,0,.1);
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding:32px 16px}
+  .page{max-width:1240px;margin:0 auto}
+  h1{color:var(--navy);font-size:28px;margin-bottom:8px;letter-spacing:-.02em}
+  h2{color:var(--navy);font-size:20px;margin:32px 0 12px;letter-spacing:-.01em;border-bottom:2px solid var(--accent);padding-bottom:6px}
+  h3{color:var(--navy);font-size:16px;margin-bottom:8px}
+  h4{color:var(--navy);font-size:14px;margin:12px 0 6px}
+  .lead{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:var(--shadow)}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .badge-wave{background:var(--accent);color:var(--navy)}
+  .badge-new{background:#16a34a;color:#fff}
+  .badge-rev{background:#ea580c;color:#fff}
+  .badge-summary{background:var(--navy);color:#fff}
+  .badge-warn{background:#fef3c7;color:#92400e}
+  .badge-success{background:#dcfce7;color:#166534}
+  .badge-danger{background:#fee2e2;color:#991b1b}
+  code{background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px;color:var(--navy);font-family:'Menlo',monospace}
+  /* CHANGELOG box */
+  .changelog{background:#f0f9ff;border-left:4px solid var(--blue);padding:14px 18px;border-radius:6px;margin-bottom:24px}
+  .changelog h3{color:var(--blue);margin-bottom:8px}
+  .changelog ul{padding-left:22px;font-size:13px}
+  .changelog li{margin:3px 0}
+  /* Pipeline diagram */
+  .pipeline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;font-family:'Menlo',monospace;margin-top:4px}
+  .pipe-node{background:#e0f2fe;border:1px solid #0284c7;border-radius:6px;padding:8px 10px;color:#0c4a6e;font-weight:600}
+  .pipe-node.new{background:#fef9c3;border-color:#ca8a04;color:#713f12}
+  .pipe-node.reject{background:#fee2e2;border-color:#dc2626;color:#991b1b}
+  .pipe-node.ok{background:#dcfce7;border-color:#16a34a;color:#166534}
+  .pipe-arrow{color:var(--muted);font-weight:700}
+  .pipe-loop{background:#fffbeb;border:1px dashed #d97706;padding:10px 14px;border-radius:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pipe-gate{background:#f3e8ff;border:2px solid #9333ea;padding:10px 14px;border-radius:20px;color:#6b21a8;font-weight:700;font-family:'Menlo',monospace;font-size:12px}
+  /* Ticket modal mock */
+  .ticket-modal{background:#fff;border:1px solid var(--border-strong);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-lg)}
+  .ticket-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid var(--border)}
+  .ticket-header h3{font-size:18px;margin-bottom:6px}
+  .ticket-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .ticket-badges{display:flex;gap:6px;flex-wrap:wrap}
+  .x-btn{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:0 8px}
+  /* Tab strip */
+  .tabstrip{display:flex;gap:2px;border-bottom:2px solid var(--navy);margin-bottom:0;overflow-x:auto}
+  .tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .tab.summary{background:var(--accent);color:var(--navy)}
+  .tab.summary.active{background:var(--navy);color:var(--accent)}
+  .tab-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+  .tab-dot.green{background:#16a34a}
+  .tab-dot.yellow{background:#eab308}
+  .tab-dot.red{background:#dc2626}
+  /* Tab content panel */
+  .tab-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:20px;border-radius:0 0 var(--radius) var(--radius);min-height:240px}
+  /* Collapsible email preview */
+  .email-preview{border:1px solid var(--border-strong);border-radius:8px;margin-bottom:20px;overflow:hidden}
+  .email-preview-header{background:var(--bg);padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--navy);border-left:3px solid var(--blue)}
+  .email-preview-body{padding:14px;font-size:13px;color:var(--text);background:#fafbfc;display:none}
+  .email-preview.open .email-preview-body{display:block}
+  .email-preview .arrow{color:var(--muted);transition:transform .2s}
+  .email-preview.open .arrow{transform:rotate(90deg)}
+  .email-field{display:grid;grid-template-columns:90px 1fr;gap:12px;margin-bottom:6px;font-size:12px}
+  .email-field .k{color:var(--muted);font-weight:600}
+  .email-body-text{background:#fff;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-top:10px;white-space:pre-wrap;font-size:12px;line-height:1.7;color:#334155;max-height:180px;overflow-y:auto}
+  /* Side-by-side table */
+  table.sbs{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:13px}
+  table.sbs th{text-align:left;padding:8px;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  table.sbs td{padding:8px 10px;background:var(--bg)}
+  table.sbs tr.match td{background:#dcfce7}
+  table.sbs tr.mismatch td{background:#fef3c7}
+  table.sbs tr.partial td{background:#fef3c7}
+  .match-icon{text-align:center;font-weight:700;width:40px}
+  .field-label{font-weight:600;width:160px;color:var(--navy)}
+  .not-extracted{color:var(--muted);font-style:italic;font-size:12px}
+  /* Three-Way Match box (NEW in v2) */
+  .twm-box{background:#fff;border:2px solid var(--accent);border-radius:10px;padding:18px;margin:16px 0}
+  .twm-box h4{color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .twm-box .twm-badge{background:var(--accent);color:var(--navy);font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700}
+  .twm-row{display:grid;grid-template-columns:200px 1fr 80px;gap:12px;padding:8px 0;font-size:13px;border-bottom:1px dashed var(--border)}
+  .twm-row:last-child{border-bottom:none;font-weight:700;background:#dcfce7;margin:0 -10px;padding:10px;border-radius:6px}
+  /* Aggregation cards */
+  .agg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+  .agg-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px}
+  .agg-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;letter-spacing:.04em}
+  .agg-card .value{font-size:22px;font-weight:800;color:var(--navy);margin-top:4px}
+  .agg-card .sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .flag-row{background:#fef3c7;border-left:4px solid #eab308;padding:12px;border-radius:6px;margin-top:16px;font-size:13px}
+  .flag-row b{color:#92400e}
+  /* Rejection card */
+  .reject-card{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:16px;margin-top:16px}
+  .reject-card h4{color:#991b1b;margin-bottom:6px;font-size:14px}
+  .reject-card .email-preview-rej{background:#fff;padding:12px;border-radius:6px;font-size:12px;margin-top:6px;color:#7f1d1d;white-space:pre-wrap;border:1px solid #fca5a5;font-family:'Menlo',monospace;line-height:1.6}
+  /* Action bar */
+  .action-bar{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .action-bar .left-notes{margin-right:auto;font-size:12px;color:var(--muted);align-self:center}
+  .btn{padding:10px 18px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none}
+  .btn-primary{background:var(--navy);color:#fff}
+  .btn-ghost{background:var(--bg);color:var(--navy);border:1px solid var(--border-strong)}
+  .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .btn-warn{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+  .btn-icon{padding:5px 10px;font-size:11px;background:var(--bg);color:var(--navy);border:1px solid var(--border-strong);border-radius:6px;cursor:pointer}
+  /* Notes */
+  .note{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:6px;font-size:13px;margin-top:12px;color:#713f12}
+  .note b{color:#7c2d12}
+  .note.good{background:#ecfdf5;border-color:#10b981;color:#064e3b}
+  .note.good b{color:#065f46}
+  /* Taxonomy table */
+  table.tx{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  table.tx th{background:var(--navy);color:#fff;text-align:left;padding:10px;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  table.tx td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.tx tr.sys-fail td{background:#eff6ff}
+  table.tx tr.soft td{background:#fefce8}
+  .cat-chip{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase}
+  .cat-hard{background:#fee2e2;color:#991b1b}
+  .cat-sys{background:#dbeafe;color:#1e40af}
+  .cat-soft{background:#fef3c7;color:#92400e}
+  /* System vs client decision */
+  .decision-flow{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:12px}
+  .decision-flow .df-row{display:flex;align-items:center;gap:16px;margin:8px 0}
+  .decision-flow .df-q{background:#f3e8ff;border:1px solid #9333ea;padding:10px 14px;border-radius:20px;font-weight:600;color:#6b21a8;font-size:13px}
+  .decision-flow .df-yes{background:#dcfce7;border:1px solid #16a34a;padding:10px 14px;border-radius:6px;color:#166534;font-size:13px;font-weight:600}
+  .decision-flow .df-no{background:#fee2e2;border:1px solid #dc2626;padding:10px 14px;border-radius:6px;color:#991b1b;font-size:13px;font-weight:600}
+  .decision-flow .df-arrow{color:var(--muted);font-weight:700}
+  /* Action matrix */
+  table.matrix{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  table.matrix th{background:var(--bg);text-align:left;padding:10px;color:var(--navy);font-size:12px;text-transform:uppercase}
+  table.matrix td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.matrix tr.primary td{background:#f0f9ff}
+  /* Template card */
+  .tmpl{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+  .tmpl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--border)}
+  .tmpl-head h4{margin:0}
+  .tmpl pre{background:#fafbfc;padding:12px;border-radius:6px;font-size:12px;white-space:pre-wrap;line-height:1.6;color:#334155;font-family:'Menlo',monospace}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>KAN-47 — Multi-Attachment UI Mockup <span class="badge badge-rev">v2 · All-or-Nothing</span></h1>
+  <p class="lead">Ships an "all-or-nothing" multi-attachment pipeline: all N attachments extract cleanly → one ticket; any fail → reject whole email with diagnostic message, no partial ticket. Adds email preview in Summary, full action matrix, Three-Way Match, rejection taxonomy, and system vs client failure routing.</p>
+
+  <div class="changelog">
+    <h3>What changed from v1</h3>
+    <ul>
+      <li><b>All-or-nothing processing</b> — any failed attachment rejects the entire email (no partial tickets)</li>
+      <li><b>Email preview</b> — collapsible panel in Summary tab only (removed from per-attachment tabs)</li>
+      <li><b>Three-Way Match block</b> — email amount vs sum-of-attachments, explicit in Summary</li>
+      <li><b>Action matrix</b> — explicit table of what each button does at ticket-level vs attachment-level</li>
+      <li><b>Failure taxonomy</b> — 5 categories with reject-vs-retry routing</li>
+      <li><b>System-fail vs client-fail flow</b> — retry silently on our errors, reject cleanly on theirs</li>
+      <li><b>5 rejection email templates</b> — one per failure category + combined multi-issue version</li>
+      <li><b>Removed "Retry this attachment"</b> — all-or-nothing makes it unnecessary</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 1: PIPELINE FLOW -->
+  <div class="section">
+    <h2>1. Pipeline flow — v13.3 all-or-nothing</h2>
+    <p class="lead">Evaluate all N attachments first, then gate. On ANY client-failure → reject whole email. On system-failure (our infra) → retry silently, don't penalize the client.</p>
+
+    <h4>Pre-flight</h4>
+    <div class="pipeline">
+      <span class="pipe-node">Webhook (Worker Dispatch)</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">Claim &amp; Reconstitute</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">Prepare for AI v3</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node new">Count Attachments (new)</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-gate">N &gt; 5?</span>
+    </div>
+    <div class="pipeline" style="margin-left:40px;margin-top:6px">
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node reject">Reject: "too many attachments"</span>
+    </div>
+
+    <h4 style="margin-top:18px">Loop (sequential, inside single n8n execution)</h4>
+    <div class="pipe-loop">
+      <span class="pipe-arrow">for each attachment i = 1 to N:</span>
+      <span class="pipe-node">Gemini Extract</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node">AI Parse &amp; Validate</span>
+      <span class="pipe-arrow">&rarr;</span>
+      <span class="pipe-node new">Classify Outcome: pass / client-fail / system-fail</span>
+    </div>
+
+    <h4 style="margin-top:18px">Gate after loop completes</h4>
+    <div class="pipeline">
+      <span class="pipe-gate">Any system-fail?</span>
+    </div>
+    <div class="pipeline" style="margin-left:40px;margin-top:6px">
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node new">Silent Retry (up to 3x with backoff) &rarr; then hard-fail to sys-admin</span>
+      <span class="pipe-arrow" style="margin-left:30px">&rarr; NO, continue</span>
+    </div>
+    <div class="pipeline" style="margin-top:10px">
+      <span class="pipe-gate">Any client-fail?</span>
+    </div>
+    <div class="pipeline" style="margin-left:40px;margin-top:6px">
+      <span class="pipe-arrow">&rarr; YES</span>
+      <span class="pipe-node reject">Reject whole email + diagnostic email listing ALL failed attachments</span>
+      <span class="pipe-arrow" style="margin-left:30px">&rarr; NO</span>
+      <span class="pipe-node ok">All pass &rarr; Aggregate &rarr; Create ticket &rarr; Webhook to dashboard</span>
+    </div>
+
+    <div class="note good"><b>Execution budget:</b> Still 1 n8n execution per email. The loop is a JS for-loop inside a Code node (not n8n's SplitInBatches) → stays on trial cap.</div>
+    <div class="note"><b>"Evaluate all" not "fail fast":</b> even if attachment 2 fails client-side, we still try 3/4/5 before rejecting. That way the rejection email lists ALL issues at once → client fixes everything in one resend, no ping-pong.</div>
+  </div>
+
+  <!-- SECTION 2: SUMMARY TAB (HAPPY PATH) -->
+  <div class="section">
+    <h2>2. Ticket detail — Summary tab (happy path, 3 attachments)</h2>
+    <p class="lead">This is the view Finance approves. Email preview is collapsible at top; aggregation cards show rollup; Three-Way Match is explicit; action buttons are ticket-level only.</p>
+
+    <div class="ticket-modal">
+      <div class="ticket-header">
+        <div>
+          <h3>TKT-103 &middot; Capital Taiyo — April payroll disbursement</h3>
+          <div class="ticket-meta">Apr 23, 2026 at 10:14 AM &middot; Processed in 18s</div>
+          <div class="ticket-badges">
+            <span class="badge badge-wave">MA</span>
+            <span class="badge badge-success">Low risk</span>
+            <span class="badge badge-summary">3 attachments · all clean</span>
+          </div>
+        </div>
+        <button class="x-btn">&times;</button>
+      </div>
+
+      <div class="tabstrip">
+        <div class="tab summary active"><span class="tab-dot green"></span> Summary</div>
+        <div class="tab"><span class="tab-dot green"></span> 1. payroll_apr.pdf</div>
+        <div class="tab"><span class="tab-dot green"></span> 2. employees.xlsx</div>
+        <div class="tab"><span class="tab-dot green"></span> 3. slip.jpg</div>
+      </div>
+
+      <div class="tab-panel">
+        <!-- COLLAPSIBLE EMAIL PREVIEW (NEW IN V2) -->
+        <div class="email-preview open">
+          <div class="email-preview-header">
+            <span>&#9993; Original Email — 3 attachments · click to collapse</span>
+            <span class="arrow">&#x25BC;</span>
+          </div>
+          <div class="email-preview-body">
+            <div class="email-field"><span class="k">From</span><span>finance@capitaltaiyo.mm</span></div>
+            <div class="email-field"><span class="k">To</span><span>emoney@zeyalabs.ai</span></div>
+            <div class="email-field"><span class="k">Subject</span><span>April 2026 Payroll Disbursement — Capital Taiyo</span></div>
+            <div class="email-field"><span class="k">Received</span><span>Apr 23, 2026, 10:14 AM GMT+7</span></div>
+            <div class="email-field"><span class="k">Attachments</span><span>payroll_apr.pdf (184 KB) · employees.xlsx (22 KB) · slip.jpg (410 KB)</span></div>
+            <div class="email-body-text">Dear Wave Money Team,
+
+Please process our April 2026 payroll disbursement as attached.
+
+Total amount: 24,500,000 MMK
+Pay date: April 25, 2026
+Number of employees: 47
+Cost center: HQ Operations
+
+Payroll breakdown and employee list attached. Bank confirmation slip included.
+
+Authorized by:
+  Htoo Aung — Sales HOD
+  Mya Kyaw — Finance Manager
+
+Best regards,
+Capital Taiyo Co., Ltd.</div>
+          </div>
+        </div>
+
+        <h3>Rollup across all 3 attachments</h3>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:8px">This is the canonical view for Finance approval. Individual tabs are for traceability.</p>
+
+        <div class="agg-grid">
+          <div class="agg-card">
+            <div class="label">Total amount (summed)</div>
+            <div class="value">24,500,000 MMK</div>
+            <div class="sub">PDF: 24,500,000 · XLSX: 24,500,000 · Slip: 24,500,000</div>
+          </div>
+          <div class="agg-card">
+            <div class="label">Employees (deduped)</div>
+            <div class="value">47 <span style="font-size:12px;color:var(--muted);font-weight:500">unique</span></div>
+            <div class="sub">Source: Attachment 2 (XLSX, 47 rows) · PDF names cross-referenced</div>
+          </div>
+          <div class="agg-card">
+            <div class="label">Pay date (consensus)</div>
+            <div class="value">Apr 25, 2026</div>
+            <div class="sub">Same across all 3 attachments</div>
+          </div>
+          <div class="agg-card">
+            <div class="label">Authorizations</div>
+            <div class="value" style="font-size:14px;font-weight:700">Sales HOD + Finance Mgr</div>
+            <div class="sub">Email approvers + document signers both present</div>
+          </div>
+        </div>
+
+        <!-- THREE-WAY MATCH (NEW IN V2) -->
+        <div class="twm-box">
+          <h4>&#x2713; Three-Way Match <span class="twm-badge">AMOUNT RECONCILIATION</span></h4>
+          <div class="twm-row">
+            <div><b>Email body</b></div>
+            <div>States total of 24,500,000 MMK</div>
+            <div style="color:var(--success);font-weight:700">SOURCE</div>
+          </div>
+          <div class="twm-row">
+            <div><b>Sum of attachments</b></div>
+            <div>PDF (24,500,000) + XLSX (24,500,000) + Slip (24,500,000) &rarr; all same value</div>
+            <div style="color:var(--success);font-weight:700">24.5M</div>
+          </div>
+          <div class="twm-row">
+            <div><b>Reconciliation result</b></div>
+            <div>Email &equiv; Sum of attachments &rarr; MATCH</div>
+            <div style="color:var(--success)">&check; PASS</div>
+          </div>
+        </div>
+
+        <div class="flag-row">
+          <b>&#9888; Review note:</b> Attachment 2 has 2 employees NOT found in Attachment 1 (payroll PDF). Finance should confirm whether these are new hires before approving.
+        </div>
+
+        <div class="action-bar">
+          <span class="left-notes">Ticket-level actions only (per-attachment download on individual tabs)</span>
+          <button class="btn btn-danger">Return to Client</button>
+          <button class="btn btn-warn">Flag for Review</button>
+          <button class="btn btn-primary">Approve &amp; Download Merged CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: PER-ATTACHMENT TAB -->
+  <div class="section">
+    <h2>3. Per-attachment tab — diagnostic view</h2>
+    <p class="lead">Clicking a numbered tab shows the raw side-by-side for just that attachment. No email preview here (it's in Summary). Only per-attachment actions available.</p>
+
+    <div class="ticket-modal">
+      <div class="ticket-header">
+        <div>
+          <h3>TKT-103 &middot; Capital Taiyo — April payroll disbursement</h3>
+          <div class="ticket-meta">Apr 23, 2026 at 10:14 AM</div>
+          <div class="ticket-badges">
+            <span class="badge badge-wave">MA</span>
+            <span class="badge badge-success">Low risk</span>
+            <span class="badge badge-summary">3 attachments · all clean</span>
+          </div>
+        </div>
+        <button class="x-btn">&times;</button>
+      </div>
+
+      <div class="tabstrip">
+        <div class="tab summary"><span class="tab-dot green"></span> Summary</div>
+        <div class="tab active"><span class="tab-dot green"></span> 1. payroll_apr.pdf</div>
+        <div class="tab"><span class="tab-dot green"></span> 2. employees.xlsx</div>
+        <div class="tab"><span class="tab-dot green"></span> 3. slip.jpg</div>
+      </div>
+
+      <div class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <h3 style="margin-bottom:4px">payroll_apr.pdf</h3>
+            <div style="font-size:12px;color:var(--muted)">Extracted via Gemini 3 Vision · confidence 94% · 184 KB</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-icon">Preview PDF</button>
+            <button class="btn-icon">Download this CSV</button>
+            <button class="btn-icon">Add note</button>
+          </div>
+        </div>
+
+        <table class="sbs">
+          <thead>
+            <tr>
+              <th class="field-label">Field</th>
+              <th>From Email (AI Extract)</th>
+              <th>From Attachment</th>
+              <th class="match-icon">Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="match"><td class="field-label">Company Name</td><td>Capital Taiyo Co., Ltd.</td><td>Capital Taiyo Co., Ltd.</td><td class="match-icon">&check;</td></tr>
+            <tr class="match"><td class="field-label">Initiator Name</td><td>Htoo Aung</td><td>Htoo Aung</td><td class="match-icon">&check;</td></tr>
+            <tr class="match"><td class="field-label">Total Amount</td><td>24,500,000 MMK</td><td>24,500,000 MMK</td><td class="match-icon">&check;</td></tr>
+            <tr class="match"><td class="field-label">Pay Date</td><td>Apr 25, 2026</td><td>Apr 25, 2026</td><td class="match-icon">&check;</td></tr>
+            <tr class="partial"><td class="field-label">Cost Center</td><td>HQ-Operations</td><td><span class="not-extracted">Not extracted</span></td><td class="match-icon">&mdash;</td></tr>
+            <tr class="match"><td class="field-label">Authorizations</td><td>Htoo Aung (Sales HOD), Mya Kyaw (Finance)</td><td>Htoo Aung, Mya Kyaw</td><td class="match-icon">&check;</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Reuses existing <code>kan36RenderSideBySide()</code> — no new rendering logic.</div>
+      </div>
+    </div>
+
+    <div class="note"><b>Note:</b> Per-attachment tabs have NO "Approve" button and NO email preview. Approval is ticket-level (Summary tab). Email context is ticket-level (Summary tab). Per-attachment actions are diagnostic only: preview raw file, download that attachment's CSV, add a banker note.</div>
+  </div>
+
+  <!-- SECTION 4: REJECTION CASE STUDY -->
+  <div class="section">
+    <h2>4. Rejection case study — all-or-nothing in action</h2>
+    <p class="lead">Client sends 4 attachments. Attachment 2 is password-protected, Attachment 3 is an unreadable photo. Pipeline evaluates all 4, then rejects the whole email with a single diagnostic message listing BOTH failures.</p>
+
+    <h4>Step 1 — Incoming email</h4>
+    <div class="reject-card">
+      <div style="color:#991b1b;font-weight:700;margin-bottom:8px">&#9888; email_queue row status: <code>rejected</code> &middot; no ticket created in tickets_v2</div>
+      <p><b>From:</b> finance@xyz-corp.mm &middot; <b>Subject:</b> April Payroll &middot; <b>Attachments:</b> 4 files</p>
+      <p style="margin-top:6px;font-family:Menlo,monospace;font-size:12px">payroll_apr.pdf (201 KB) · hr_data.xlsx.zip (encrypted · 88 KB) · staff_photo.jpg (0.2 KB, corrupted) · bank_slip.pdf (174 KB)</p>
+    </div>
+
+    <h4 style="margin-top:18px">Step 2 — Per-attachment extraction results (all 4 evaluated, not stopped on first fail)</h4>
+    <table class="tx">
+      <thead><tr><th style="width:32px">#</th><th>Filename</th><th>Outcome</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>payroll_apr.pdf</td><td><span class="cat-chip cat-soft" style="background:#dcfce7;color:#166534">&check; OK</span></td><td>Extracted cleanly, confidence 92%</td></tr>
+        <tr><td>2</td><td>hr_data.xlsx.zip</td><td><span class="cat-chip cat-hard">FAIL</span></td><td>Password-protected ZIP — cannot open</td></tr>
+        <tr><td>3</td><td>staff_photo.jpg</td><td><span class="cat-chip cat-hard">FAIL</span></td><td>Corrupted image, 200 bytes</td></tr>
+        <tr><td>4</td><td>bank_slip.pdf</td><td><span class="cat-chip cat-soft" style="background:#dcfce7;color:#166534">&check; OK</span></td><td>Extracted cleanly, confidence 88%</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:18px">Step 3 — Rejection email sent to client (single message, lists BOTH issues)</h4>
+    <div class="reject-card">
+      <div class="email-preview-rej">From: emoney@zeyalabs.ai
+To: finance@xyz-corp.mm
+Subject: Re: April Payroll — Unable to Process
+
+Dear Sender,
+
+We received your email with 4 attachments, but our system was unable to
+process it because 2 of the attachments could not be read.
+
+Specifically:
+
+  &#x2718; hr_data.xlsx.zip — The file is password-protected. Please
+    resend without password/encryption.
+
+  &#x2718; staff_photo.jpg — The file appears to be corrupted or empty.
+    Please check the original and resend.
+
+To process your request, please resend your email with ALL 4 attachments
+(including the 2 working ones), fixing the issues above. This lets us
+create one complete record for your payroll disbursement.
+
+If you believe this rejection is in error, reply to this email with
+Reference ID: QR-20260423-C4D2 and our team will investigate.
+
+Thank you,
+Wave Money | E-Money Operations
+emoney@zeyalabs.ai</div>
+    </div>
+
+    <div class="note good"><b>Why evaluate-all not fail-fast:</b> Notice the client gets both failures in one email. If we'd stopped at attachment 2, they'd fix it, resend, then discover attachment 3 is broken too, then fix that... ping-pong 3-4 times. Evaluate-all costs ~4¢ in wasted Gemini calls but saves the client multiple round-trips.</div>
+    <div class="note"><b>DB state after rejection:</b> email_queue row status=<code>rejected</code>, full payload preserved for audit. tickets_v2 untouched. activity_log gets one entry: "Email from finance@xyz-corp.mm rejected: 2/4 attachments failed extraction".</div>
+  </div>
+
+  <!-- SECTION 5: FAILURE TAXONOMY + TEMPLATES -->
+  <div class="section">
+    <h2>5. Failure taxonomy &amp; rejection email templates</h2>
+    <p class="lead">Five outcome categories. Three trigger rejection (client's problem). One retries silently (our problem). One passes with a flag (marginal extraction, not a rejection).</p>
+
+    <table class="tx">
+      <thead><tr><th>Category</th><th>Definition</th><th>Who's at fault</th><th>System action</th></tr></thead>
+      <tbody>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: password</span></td><td>ZIP/PDF requires password we don't have</td><td>Client</td><td>Reject with template 1</td></tr>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: unreadable</span></td><td>File corrupted, 0-byte, or unsupported format</td><td>Client</td><td>Reject with template 2</td></tr>
+        <tr><td><span class="cat-chip cat-hard">HARD-FAIL: not payroll</span></td><td>Gemini confidence &lt; 50% OR no extractable payroll fields</td><td>Client</td><td>Reject with template 3</td></tr>
+        <tr class="sys-fail"><td><span class="cat-chip cat-sys">SYSTEM-FAIL: infra</span></td><td>Gemini 429/5xx, network timeout, Supabase down</td><td><b>Us</b></td><td>Silent retry 3x with backoff &rarr; escalate to sys-admin (NOT client)</td></tr>
+        <tr class="soft"><td><span class="cat-chip cat-soft">SOFT-PASS: low confidence</span></td><td>Gemini confidence 50-70%, extracted some fields</td><td>Neither</td><td>Process + flag on dashboard. <b>Not</b> a rejection.</td></tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:22px">Rejection email templates</h4>
+    <p class="lead">All templates share the same opening ("Dear Sender, we received your email but...") and closing (Reference ID + reply-to contact). Only the failure-specific block varies. Combined template auto-generates when multiple issues are present.</p>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 1 — Password-protected</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has 1 attachment(s) that are password-protected or encrypted:
+
+  &#x2718; {filename} — password-protected
+
+Please resend all attachments without password protection. Our system
+needs to open and read the files to process your payroll request.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 2 — Unreadable / corrupted</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has 1 attachment(s) that could not be read:
+
+  &#x2718; {filename} — file appears corrupted ({bytes} bytes)
+
+Please check the original file on your device, confirm it opens
+correctly, and resend.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 3 — Not recognized as payroll</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has 1 attachment(s) that our system could not recognize
+as a payroll document:
+
+  &#x2718; {filename} — does not appear to contain payroll data
+
+Please confirm this file is the correct payroll document (not a
+signature page, cover letter, or unrelated image) and resend.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 4 — Too many attachments</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Our system processes up to 5 payroll attachments per email.
+Your email contained {N} attachments.
+
+Please split your request into separate emails, each with no
+more than 5 attachments, and resend.</pre>
+    </div>
+
+    <div class="tmpl">
+      <div class="tmpl-head"><h4>Template 5 — Combined (auto-generated when multiple issues)</h4><span class="cat-chip cat-hard">HARD-FAIL</span></div>
+      <pre>Your email has {M} attachment(s) that could not be processed:
+
+  &#x2718; {filename1} — {reason1}
+  &#x2718; {filename2} — {reason2}
+  &#x2718; {filename3} — {reason3}
+
+Please resend your email with ALL {N} attachments together, fixing
+the issues above. This lets us create one complete record for your
+payroll disbursement.</pre>
+    </div>
+  </div>
+
+  <!-- SECTION 6: SYSTEM-FAIL VS CLIENT-FAIL -->
+  <div class="section">
+    <h2>6. System-fail vs client-fail routing</h2>
+    <p class="lead">Critical correctness rule: we must NEVER reject a client's good email because Gemini had a bad minute. The classifier distinguishes infrastructure failures (our problem) from malformed inputs (client's problem).</p>
+
+    <div class="decision-flow">
+      <div class="df-row">
+        <div class="df-q">Did extraction fail?</div>
+        <div class="df-arrow">&rarr;</div>
+        <div class="df-yes">Yes</div>
+      </div>
+      <div class="df-row" style="margin-left:40px">
+        <div class="df-q">Error is 429 / 5xx / timeout / network?</div>
+        <div class="df-arrow">&rarr; YES</div>
+        <div style="background:#dbeafe;border:1px solid #1e40af;padding:10px 14px;border-radius:6px;font-size:13px;color:#1e3a8a">System-fail: silent retry up to 3x with exponential backoff (1s, 3s, 9s). If still failing after retries, escalate to sys-admin. Client sees nothing.</div>
+      </div>
+      <div class="df-row" style="margin-left:40px">
+        <div class="df-q">Error is password/corrupt/not-payroll/confidence?</div>
+        <div class="df-arrow">&rarr; YES</div>
+        <div class="df-no">Client-fail: classify into one of templates 1-5. Collect all client-fails across the N attachments, send ONE diagnostic rejection email, mark email_queue.status=rejected. No ticket created.</div>
+      </div>
+    </div>
+
+    <div class="note"><b>Edge case:</b> Mixed system-fail + client-fail on the same email. Rule: system-fail always takes priority. If the loop hits even one system-fail, retry the whole email. Only after all system-fails resolve do we classify client-fails and decide reject vs accept.</div>
+  </div>
+
+  <!-- SECTION 7: ACTION MATRIX -->
+  <div class="section">
+    <h2>7. Action matrix — what each button does</h2>
+    <p class="lead">Approval is always ticket-level. Per-attachment actions are diagnostic only. This keeps Finance's mental model consistent: "one disbursement = one approval."</p>
+
+    <table class="matrix">
+      <thead><tr><th>Button</th><th>Lives on</th><th>Scope</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr class="primary"><td><b>Approve &amp; Download Merged CSV</b></td><td>Summary tab</td><td>Whole ticket</td><td>Generate deduped CSV from aggregated employee list. Download + mark ticket <code>APPROVED</code>. Logged in activity_log.</td></tr>
+        <tr><td><b>Flag for Review</b></td><td>Summary tab</td><td>Whole ticket</td><td>Set <code>status=NEEDS_REVIEW</code>. Prompt for a note. Ticket stays in queue, no CSV generated. Does not send email.</td></tr>
+        <tr><td><b>Return to Client</b></td><td>Summary tab</td><td>Whole ticket</td><td>Send custom rejection email (operator picks template or writes note). Set <code>status=RETURNED</code>. No CSV.</td></tr>
+        <tr><td>Preview PDF / File</td><td>Per-attachment tab</td><td>Single attachment</td><td>Render the raw file inline (PDF.js for PDFs, img for images, XLSX parse preview).</td></tr>
+        <tr><td>Download this CSV</td><td>Per-attachment tab</td><td>Single attachment</td><td>Download raw extraction from one attachment only. Audit/debugging use. Does NOT change ticket status.</td></tr>
+        <tr><td>Add note</td><td>Per-attachment tab</td><td>Single attachment</td><td>Attach a banker comment to this specific tab. Visible in Summary as a review flag.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 8: ENGINEERING FOOTPRINT -->
+  <div class="section">
+    <h2>8. Engineering footprint (revised for v2 all-or-nothing)</h2>
+    <table class="matrix">
+      <thead><tr><th>Layer</th><th>New</th><th>Modified</th><th>Reused as-is</th></tr></thead>
+      <tbody>
+        <tr><td><b>n8n pipeline</b></td><td>Count Attachments node · Sequential loop (JS for-loop in Code node) · Classify Outcome node · Aggregate Results node · Extended rejection template switch</td><td>Webhook payload schema (adds <code>attachments[]</code>) · Skip Filter branch for new reject reasons</td><td>Gemini Extract, AI Parse, Outlook sender, Claim/Mark nodes, webhook endpoint</td></tr>
+        <tr><td><b>Dashboard</b></td><td><code>renderAttachmentTabs()</code>, <code>renderSummaryTab()</code>, <code>renderEmailPreview()</code>, <code>renderThreeWayMatch()</code>, merged CSV generator</td><td><code>openTicketDetail()</code> — adds tab dispatch based on <code>t.attachments.length</code></td><td><code>kan36RenderSideBySide()</code> (per tab), per-attachment CSV gen, <code>approveAndDownloadCSV()</code> (extends to merged)</td></tr>
+        <tr><td><b>Webhook (api/)</b></td><td>—</td><td><code>api/webhook.js</code> accepts <code>attachments[]</code> with legacy single-payload fallback</td><td>Supabase insert, auth, shape validation</td></tr>
+        <tr><td><b>Supabase</b></td><td>—</td><td>—</td><td>JSONB <code>raw_payload</code> absorbs the new shape without schema change</td></tr>
+      </tbody>
+    </table>
+    <div class="note good"><b>Effort:</b> 6-8 hours total (slightly up from v1's 5-7 due to classify-outcome + multi-template rejection + Three-Way Match UI). Still backward-compatible — existing single-attachment tickets keep rendering via legacy code path.</div>
+  </div>
+
+  <!-- SECTION 9: DEFERRED QUESTIONS -->
+  <div class="section">
+    <h2>9. Deferred questions (post-v13.3)</h2>
+    <ul style="padding-left:20px;font-size:14px;line-height:2">
+      <li><b>Rejection email copy review with Vinh</b> — templates 1-5 above are drafts. Vinh may want softer tone or Myanmar-language versions. Review before first Myanmar production use.</li>
+      <li><b>Rejection rate-limit / loop protection</b> — if a client sends 3 broken emails in 24h, escalate to support contact instead of auto-rejecting N more times. Build when first abuse case appears.</li>
+      <li><b>Smart summary aggregation rules</b> — pattern-aware sum/dedupe/pick-one. Current: dumb sum + dedupe + flag. Revisit after 2 weeks of real Myanmar data.</li>
+      <li><b>Per-attachment approval workflow</b> — not needed for v13.3 (all-or-nothing means the whole ticket is either good or rejected). Might matter if Wave later adds a "partial accept" business flow.</li>
+      <li><b>Tab ordering &amp; naming</b> — ships with upload order + filename (truncated at 20 chars). No decision needed now.</li>
+      <li><b>"Download all attachments as ZIP"</b> — nice-to-have for audit. Backlog.</li>
+      <li><b>Soft-pass confidence threshold</b> — 50-70% is a guess. Tune from real data.</li>
+    </ul>
+    <div class="note good"><b>Removed from v1 deferred list:</b> "Retry this attachment" UX is no longer applicable under all-or-nothing — killed.</div>
+  </div>
+
+  <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid var(--border)">
+    Mockup v2 · Wave EMI v13.3 design · KAN-47 · All-or-Nothing · 2026-04-20
+  </div>
+
+</div>
+</body>
+</html>
