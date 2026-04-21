@@ -766,11 +766,15 @@ return {
       size_bytes: a.sizeBytes,
       valid: a._valid === true,
       rejection_reason: a._rejectReason || null,
+      // v13.3 KAN-47 fix (Apr 21): XLSX/spreadsheet mimes INTENTIONALLY
+      // EXCLUDED from vision_eligible. Gemini 3 Flash inlineData supports
+      // only image/* + application/pdf; sending XLSX binary returns HTTP
+      // 400. XLSX is parsed internally (inflateRaw) and fed to Gemini via
+      // the spreadsheet_text prompt append in Gemini 3 Extract buildParts().
+      // Matches v13.2 behavior that was lost in the initial Step 3 rewrite.
       vision_eligible: (
         a.mimeType.startsWith('image/') ||
-        a.mimeType === 'application/pdf' ||
-        a.mimeType.includes('spreadsheet') ||
-        a.mimeType.includes('excel')
+        a.mimeType === 'application/pdf'
       )
     })),
     valid_attachment_count: attachment_base64_list.filter(a => a._valid).length,
