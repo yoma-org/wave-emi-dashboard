@@ -215,20 +215,26 @@ export default async function handler(req, res) {
   // expect a single `attachment_id` in the response body.
   let firstAttachmentId = null;
 
+  // Bucket limit is 10 MB per file; guard here to avoid a wasted round-trip to Storage.
+  // Check on the decoded buffer size, not the base64 string length — a 10 MB file base64-encodes
+  // to ~13.4 MB, so a base64-length threshold would either let oversized files through or
+  // reject valid files under the bucket limit.
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
   for (let i = 0; i < attachmentsInput.length; i++) {
     const att = attachmentsInput[i];
     const base64Data = att.base64 || att.attachment_base64;
     if (!base64Data) continue;
-    if (base64Data.length >= 5 * 1024 * 1024) {
-      console.warn(`Skipping attachment ${i}: size limit exceeded (${base64Data.length} bytes)`);
-      continue;
-    }
 
     let attachmentId = null;
     let storagePath = null;
 
     try {
       const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > MAX_FILE_BYTES) {
+        console.warn(`Skipping attachment ${i}: file ${buffer.length} bytes exceeds bucket limit ${MAX_FILE_BYTES}`);
+        continue;
+      }
       const mime = att.mime_type || att.attachment_mime_type || 'image/jpeg';
       const ext = mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg';
       const originalName = att.filename || att.attachment_filename || `attachment_${i}.${ext}`;
