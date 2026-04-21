@@ -100,9 +100,25 @@ if (!geminiNode) throw new Error('gemini3-extract node not found in source JSON'
 geminiNode.parameters.jsCode = geminiExtractJs;
 
 // =====================================================================
-// 4. AI Parse & Validate v3 — array aggregation (TODO: Layer C Step 5)
+// 4. AI Parse & Validate v3 — multi-attachment aggregation (Layer C Step 5)
 // =====================================================================
-// Will replace jsCode to consume attachments[] array of Gemini results.
+// Replace jsCode with v13.3 version. Merges prepData.attachments[] (raw)
+// with d.attachment_extractions[] (Gemini results) into a unified
+// attachments[] array for the webhook POST to /api/webhook. Layer B
+// webhook.js already accepts this shape — it prefers attachments[] when
+// present and falls back to legacy attachment_base64 fields when not.
+//
+// Primary ticket fields (company, amount, approvers) continue to flow
+// from the legacy _gemini_result (attachment_extractions[0]._gemini_result
+// per Step 4's backward-compat) so the ticket record itself is unchanged.
+// Layer D (dashboard) will consume attachments[] for per-tab rendering.
+const parseValidateJs = readFileSync(
+  'g:/My Drive/Tech Jobs/Trustify/03_build/wave-emi-dashboard/pipelines/_worker_v13_3_parse_validate.js',
+  'utf8'
+);
+const parseNode = worker.nodes.find(n => n.id === 'parse-validate-v3');
+if (!parseNode) throw new Error('parse-validate-v3 node not found in source JSON');
+parseNode.parameters.jsCode = parseValidateJs;
 
 // =====================================================================
 // 5. Send Rejection Email — 3+combined templates (TODO: Layer C Step 7)
@@ -130,5 +146,5 @@ console.log('  Nodes:', worker.nodes.length);
 console.log('  Connections:', Object.keys(worker.connections).length);
 console.log('  Webhook path:', webhookNode.parameters.path);
 console.log('');
-console.log('Layer C progress: Steps 1-4 complete (scaffolding + Prepare for AI v3 + parallel Gemini).');
-console.log('Remaining: Step 5 (Parse aggregation) → Step 6 (gate order) → Step 7 (reject templates).');
+console.log('Layer C progress: Steps 1-5 complete (scaffolding + Prepare + parallel Gemini + Parse multi-attachment merge).');
+console.log('Remaining: Step 6 (gate order) → Step 7 (reject templates).');
