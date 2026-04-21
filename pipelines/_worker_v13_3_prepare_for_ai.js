@@ -400,9 +400,7 @@ function detectRejectReason(buf) {
   return null;
 }
 
-// v13.3: validate EVERY attachment and tag each with its result. Downstream
-// nodes (Layer C Step 6) will use this per-attachment data to apply the
-// all-or-nothing rejection rule + emit combined rejection reasons.
+// v13.3: validate EVERY attachment and tag each with its result.
 for (let k = 0; k < attachment_base64_list.length; k++) {
   const att = attachment_base64_list[k];
   const buf = Buffer.from(att.base64, 'base64');
@@ -410,12 +408,75 @@ for (let k = 0; k < attachment_base64_list.length; k++) {
   att._valid = att._rejectReason === null;
 }
 
-// BACKWARD-COMPAT GATE (v2 behavior, unchanged in Step 3):
-// If the FIRST attachment has a rejection reason, reject the whole email.
-// This preserves v13.2's rejection semantic for incremental test safety.
-// Layer C Step 6 will replace this with the all-or-nothing + combined rule.
-if (attachment_base64_list.length > 0 && attachment_base64_list[0]._rejectReason) {
-  return { json: { _skip: true, _skip_reason: attachment_base64_list[0]._rejectReason, from_email: from, original_subject: subject } };
+// ═══ v13.3 KAN-47 Step 6: all-or-nothing rejection + client-fail-first ═══
+//
+// Vinh's spec: if ANY attachment is unprocessable, reject the WHOLE email
+// with a single rejection reason (possibly 'combined' if multiple reasons).
+// The sender sees one notification about what went wrong — never a partial
+// ticket where Gemini only processed the valid subset.
+//
+// PRIORITY ORDER (most-specific / most-actionable first):
+//   1. too_many_attachments         (exceeded MAX_ATTACHMENTS after smime strip)
+//   2. password_protected_file      (sender can unlock)
+//   3. unsupported_file_format      (sender can convert)
+//   4. zip_archive / rar_archive / 7z_archive  (sender can extract)
+//   5. combined                     (multiple distinct reasons)
+//
+// Note: detection of too_many happens separately — the smime filter loop
+// above CAPS at MAX_ATTACHMENTS for extraction, but doesn't flag overflow.
+// We re-check raw (pre-cap) key count below.
+const rawBinaryKeys = (item.binary ? Object.keys(item.binary).filter(k => k.startsWith('attachment_')) : []);
+// Count non-smime binary keys (smime was already stripped during extraction,
+// so this re-scans the original binary map).
+let rawNonSmimeCount = 0;
+if (item.binary) {
+  for (const key of rawBinaryKeys) {
+    const meta = item.binary[key];
+    const mime = meta.mimeType || '';
+    if (!isSmimeSignature(meta, mime)) rawNonSmimeCount++;
+  }
+}
+
+const PRIORITY_ORDER = [
+  'password_protected_file',
+  'unsupported_file_format',
+  'rar_archive',
+  '7z_archive',
+  'zip_archive'
+];
+
+const rejectReasons = attachment_base64_list
+  .filter(a => a._rejectReason)
+  .map(a => a._rejectReason);
+
+const uniqueReasons = [...new Set(rejectReasons)];
+
+let skipReason = null;
+if (rawNonSmimeCount > MAX_ATTACHMENTS) {
+  // Rule 1: too many attachments — takes precedence over file-type rejections
+  // because the sender needs to reduce count FIRST before re-evaluating others.
+  skipReason = 'too_many_attachments';
+} else if (uniqueReasons.length === 1) {
+  // Rule 2-4: single reason across all bad attachments — use that reason.
+  skipReason = uniqueReasons[0];
+} else if (uniqueReasons.length > 1) {
+  // Rule 5: multiple distinct reasons — pick highest-priority, flag 'combined'.
+  // The rejection email (Step 7) will list all reasons for the sender.
+  skipReason = 'combined';
+}
+
+if (skipReason) {
+  return {
+    json: {
+      _skip: true,
+      _skip_reason: skipReason,
+      _combined_reasons: skipReason === 'combined' ? uniqueReasons : null,
+      _raw_non_smime_count: rawNonSmimeCount,
+      _max_attachments: MAX_ATTACHMENTS,
+      from_email: from,
+      original_subject: subject
+    }
+  };
 }
 
 
