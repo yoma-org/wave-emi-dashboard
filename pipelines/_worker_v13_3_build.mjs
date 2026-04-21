@@ -44,10 +44,34 @@ webhookNode.parameters.path = 'emi-worker-v13-3';
 webhookNode.webhookId = 'emi-worker-v13-3';
 
 // =====================================================================
-// 2. Prepare for AI v3 — multi-attachment (TODO: Layer C Step 3)
+// 2. Prepare for AI v3 — multi-attachment (Layer C Step 3)
 // =====================================================================
-// Will replace jsCode with v13.3 multi-attachment version in a follow-up commit.
-// For now: baseline carries v2's single-attachment logic unchanged.
+// Replace jsCode with v13.3 version from _worker_v13_3_prepare_for_ai.js.
+// Source .js file is edited as normal JavaScript (no JSON escape concerns);
+// build script slurps it and injects into the node at generation time.
+//
+// What changed vs v2:
+//   - MAX_ATTACHMENTS raised 2 → 5 (KAN-47 spec)
+//   - S/MIME signature attachments (smime.p7m, application/pkcs7-signature)
+//     filtered out BEFORE counting — don't consume a slot and don't trigger
+//     'unsupported_file_format' rejection on digitally-signed emails.
+//   - detectRejectReason(buf) extracted into a helper so every attachment
+//     can be validated, not just [0]. Each attachment in attachment_base64_list
+//     gets tagged with _valid + _rejectReason.
+//   - Return object adds attachments[] array with per-attachment metadata
+//     + validation status. Legacy fields (attachment_base64, vision_eligible,
+//     is_spreadsheet) retained so v13.2 Gemini/Parse nodes still function
+//     until Layer C Steps 4-5 replace them.
+//   - Backward-compat gate preserved: if attachments[0] has a rejection,
+//     whole email is rejected (same as v13.2). Layer C Step 6 replaces
+//     this with the all-or-nothing + combined-reason rule.
+const prepareForAiJs = readFileSync(
+  'g:/My Drive/Tech Jobs/Trustify/03_build/wave-emi-dashboard/pipelines/_worker_v13_3_prepare_for_ai.js',
+  'utf8'
+);
+const prepareNode = worker.nodes.find(n => n.id === 'prepare-for-ai-v3');
+if (!prepareNode) throw new Error('prepare-for-ai-v3 node not found in source JSON');
+prepareNode.parameters.jsCode = prepareForAiJs;
 
 // =====================================================================
 // 3. Gemini 3 Extract — parallel Promise.allSettled (TODO: Layer C Step 4)
@@ -87,5 +111,5 @@ console.log('  Nodes:', worker.nodes.length);
 console.log('  Connections:', Object.keys(worker.connections).length);
 console.log('  Webhook path:', webhookNode.parameters.path);
 console.log('');
-console.log('Layer C progress: Step 1 complete (scaffolding).');
-console.log('Remaining: Step 3 (Prepare for AI v3) → Step 4 (Gemini parallel) → ...');
+console.log('Layer C progress: Steps 1-3 complete (scaffolding + Prepare for AI v3 multi-attachment).');
+console.log('Remaining: Step 4 (Gemini parallel) → Step 5 (Parse aggregation) → Step 6 (gate order) → Step 7 (reject templates).');
