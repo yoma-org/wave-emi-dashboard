@@ -79,6 +79,15 @@ function getHeader(name) {
 const isEmail = d.snippet !== undefined || d.threadId !== undefined || d.Subject !== undefined || d.From !== undefined || (d.payload && d.payload.headers) || d.bodyPreview !== undefined || (d.from && d.from.emailAddress);
 const source = isEmail ? 'email' : 'webhook';
 
+// v13.3 KAN-47: skip Outlook drafts silently.
+// Spooler v1 can pick up drafts from the mailbox depending on folder config.
+// Drafts have no real content and must NOT route to Send Rejection Email
+// (which would attempt to email an empty from-address). Silent skip = no
+// ticket created, no rejection notification fired.
+if (isEmail && d.isDraft === true) {
+  return skip('outlook_draft');
+}
+
 const subject = isEmail
   ? (d.subject || getHeader('Subject') || '')
   : (d.body?.subject || d.subject || '');
@@ -89,6 +98,16 @@ const subject = isEmail
 const senderEmailAddr = (d.from && d.from.emailAddress ? d.from.emailAddress.address : '').toLowerCase();
 if (isEmail && (senderEmailAddr === 'emoney@zeyalabs.ai' || subject.includes('EMI Pipeline:') || subject.includes('EMI Pipeline \u2014'))) {
   return skip('loop_guard_self_send');
+}
+
+// v13.3 KAN-47: defensive skip for shape-without-content emails.
+// Stronger guard than the earlier strict key-existence check. Catches cases
+// where keys exist but all values are empty (Outlook draft-like payloads,
+// malformed Spooler entries, webhook replay shells). Routing as
+// 'no_email_metadata' makes Is Rejection Email? dead-end them (only matches
+// 'empty_body'), preventing Send Rejection Email fires to empty addresses.
+if (isEmail && !subject && !senderEmailAddr) {
+  return skip('no_email_metadata');
 }
 
 // v6: Skip internal Yoma/Wave emails that aren't disbursement requests
