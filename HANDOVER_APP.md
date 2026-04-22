@@ -2,8 +2,8 @@
 
 **Audience**: Wave infrastructure / DevOps team
 **From**: DK Nguyen — Trustify Technology (contracted through Zeyalabs)
-**Repo**: `github.com/yoma-org/wave-emi-dashboard` (branch `kan47-v13.3` until merged to `main`)
-**Companion doc**: `HANDOVER_INFRA.md` (Huy Nguyen Duc — AWS infra spec)
+**Repo**: [github.com/yoma-org/wave-emi-dashboard](https://github.com/yoma-org/wave-emi-dashboard) (branch `kan47-v13.3` until merged to `main`)
+**Companion doc**: [HANDOVER_INFRA.md](HANDOVER_INFRA.md) (Huy Nguyen Duc — AWS infra spec, pending)
 
 ---
 
@@ -11,7 +11,7 @@
 
 **Wave = landlord. Trustify = operator.**
 
-- Wave provisions AWS infrastructure (EC2, RDS, S3, IAM) — details in Huy's `HANDOVER_INFRA.md`.
+- Wave provisions AWS infrastructure (EC2, RDS, S3, IAM) — details in Huy's [HANDOVER_INFRA.md](HANDOVER_INFRA.md).
 - Wave grants Trustify operational access credentials.
 - Trustify installs, configures, deploys, and runs the app stack on top.
 - When we ship new features or fix bugs, we push directly — **no per-change tickets to Wave**.
@@ -46,7 +46,7 @@ One IAM user (or cross-account role) for the Trustify team with these permission
 
 ### Ops
 
-- **GitHub handles** for anyone on your side who wants read access to the repo (we'll add them to the `yoma-org/wave-emi-dashboard` repo)
+- **GitHub handles** for anyone on your side who wants read access to the repo (we'll add them to [yoma-org/wave-emi-dashboard](https://github.com/yoma-org/wave-emi-dashboard))
 
 ---
 
@@ -54,11 +54,11 @@ One IAM user (or cross-account role) for the Trustify team with these permission
 
 | Component | Source | How it's deployed |
 |---|---|---|
-| **Dashboard** (static `index.html` + assets) | `index.html` in the repo | We push via GitHub Actions → S3 + CloudFront invalidate |
-| **API** (`api/webhook.js`, `api/extract-employees.js`) | `api/` in the repo | We push via GitHub Actions → Lambda (or Amplify, your preference) |
-| **n8n workflow** | `pipelines/` in the repo | We import + configure via your n8n UI directly |
-| **Schema + migrations** | `sql/complete/emi_dashboard_schema_aws.sql` + future migration files | We run manually via our RDS access (never auto-deployed) |
-| **LLM integration** | `pipelines/_worker_v13_3_gemini_extract.js` — prompt templates | We wire in Bedrock via the IAM you grant us |
+| **Dashboard** (static HTML + assets) | [index.html](index.html) in the repo | We push via GitHub Actions → S3 + CloudFront invalidate |
+| **API** ([api/webhook.js](api/webhook.js), [api/extract-employees.js](api/extract-employees.js)) | [`api/`](api) in the repo | We push via GitHub Actions → Lambda (or Amplify, your preference) |
+| **n8n workflow** | [`pipelines/`](pipelines) in the repo | We import + configure via your n8n UI directly |
+| **Schema + migrations** | [sql/complete/emi_dashboard_schema_aws.sql](sql/complete/emi_dashboard_schema_aws.sql) + future migration files | We run manually via our RDS access (never auto-deployed) |
+| **LLM integration** | [pipelines/_worker_v13_3_gemini_extract.js](pipelines/_worker_v13_3_gemini_extract.js) — prompt templates | We wire in Bedrock via the IAM you grant us |
 | **Outlook credential** | n8n credential UI | We configure after §4 answers land |
 
 You never need to touch the app stack. If something breaks, we'll debug using the logs + access you've given us, fix the code, push, redeploy. You get observability (CloudWatch logs) but the operational work is ours.
@@ -116,7 +116,7 @@ The app expects the following at runtime. Names are what we use in Vercel today;
 1. **Preferred AWS region** — Singapore is closest to Myanmar; any constraint we don't know about?
 2. **n8n hosting preference** — EC2 vs ECS Fargate for the Community edition host? Either works.
 3. **Dashboard hosting** — CloudFront + S3 vs Amplify vs ECS? No strong preference on our side.
-4. **Main-branch ownership long-term** — does `yoma-org/wave-emi-dashboard` stay as the source of truth, or will Wave fork when Trustify winds down involvement? Affects how we shape the CI/CD permanence.
+4. **Main-branch ownership long-term** — does [yoma-org/wave-emi-dashboard](https://github.com/yoma-org/wave-emi-dashboard) stay as the source of truth, or will Wave fork when Trustify winds down involvement? Affects how we shape the CI/CD permanence.
 5. **Transition timeline** — how long does Trustify keep shipping features / fixing bugs? ~8-12 weeks of active development is our assumption.
 
 ---
@@ -166,4 +166,4 @@ Things we learned operating this in production that will eventually come up:
 
 ---
 
-*Repo: https://github.com/yoma-org/wave-emi-dashboard*
+**Repo**: [https://github.com/yoma-org/wave-emi-dashboard](https://github.com/yoma-org/wave-emi-dashboard)
