@@ -2,11 +2,15 @@
 -- EMI Dashboard — Complete Schema (AWS-Portable, All-in-One)
 -- ============================================================================
 -- Purpose:     Single-file deployment DDL for a fresh Postgres instance.
---              Consolidates migrations 01-15 + inline KAN-35/36/47 additions.
+--              Consolidates migrations 01-16 + inline KAN-35/36/47 additions.
 -- Target:      AWS RDS Postgres 13+ (also works on any Postgres 13+ install)
 -- Author:      DK Nguyen + Claude (Trustify Technology) for Huy Nguyen Duc
--- Date:        2026-04-21
--- Version:     v1.0 — initial AWS migration candidate
+-- Date:        2026-04-22
+-- Version:     v1.1 — synced through migration 16 (per-attachment extracted_fields JSONB)
+-- Changelog:
+--   v1.0 (2026-04-21) — initial AWS migration candidate (migrations 01-15)
+--   v1.1 (2026-04-22) — inline migration 16: extracted_fields JSONB on
+--                       ticket_vision_results + GIN index (KAN-47 Layer D)
 --
 -- ── What this file INCLUDES ─────────────────────────────────────────────────
 --   1. ENUMs (ticket_status, ticket_scenario, ticket_risk_level, ticket_type)
@@ -203,6 +207,11 @@ CREATE TABLE ticket_vision_results (
   depositor_name      TEXT DEFAULT '',
   remark              TEXT DEFAULT '',
   transaction_id      TEXT DEFAULT '',
+  -- KAN-47 Layer D (migration 16): per-attachment extracted fields as JSONB.
+  -- Captures company, amount, currency, payment_date, employees[], doc_* mirrors,
+  -- employee_count, total_amount_on_document, etc. Fields with dedicated columns
+  -- above (document_type, document_signers, amount_on_document) are NOT duplicated.
+  extracted_fields    JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -288,6 +297,8 @@ CREATE INDEX idx_ticket_emails_ticket_id        ON ticket_emails(ticket_id);
 CREATE INDEX idx_ticket_attachments_ticket_id   ON ticket_attachments(ticket_id);
 CREATE INDEX idx_ticket_vision_ticket_id        ON ticket_vision_results(ticket_id);
 CREATE INDEX idx_ticket_vision_attachment_id    ON ticket_vision_results(attachment_id);
+CREATE INDEX idx_ticket_vision_extracted_fields_gin
+                                                ON ticket_vision_results USING GIN (extracted_fields);
 CREATE INDEX idx_ticket_extraction_ticket_id    ON ticket_employee_extractions(ticket_id);
 CREATE INDEX idx_tickets_v2_status              ON tickets_v2(status);
 CREATE INDEX idx_tickets_v2_ticket_number       ON tickets_v2(ticket_number);
