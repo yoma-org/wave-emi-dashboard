@@ -2,6 +2,11 @@
 
 Internal operations tool for Wave Money's corporate salary disbursement pipeline in Myanmar. Automates the end-to-end workflow from email intake to Utiba CSV generation, with AI-powered document parsing, vision OCR, and authority matrix validation.
 
+## Handover docs (Wave DevOps — start here)
+
+- [`HANDOVER_APP.md`](HANDOVER_APP.md) — App + pipeline spec (DK, Trustify)
+- [`HANDOVER_INFRA.md`](HANDOVER_INFRA.md) — AWS infrastructure spec (Huy, Trustify) *[pending]*
+
 ## Live Demo
 
 **Dashboard:** [wave-emi-dashboard.vercel.app](https://wave-emi-dashboard.vercel.app)
