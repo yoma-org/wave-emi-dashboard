@@ -55,7 +55,7 @@ One IAM user (or cross-account role) for the Trustify team with these permission
 | Component | Source | How it's deployed |
 |---|---|---|
 | **Dashboard** (static HTML + assets) | [index.html](index.html) in the repo | We push via GitHub Actions → S3 + CloudFront invalidate |
-| **API** ([api/webhook.js](api/webhook.js), [api/extract-employees.js](api/extract-employees.js)) | [`api/`](api) in the repo | We push via GitHub Actions → Lambda (or Amplify, your preference) |
+| **API** ([api/webhook.js](api/webhook.js), [api/extract-employees.js](api/extract-employees.js)) | [`api/`](api) in the repo | We push via GitHub Actions → AWS Lambda + API Gateway |
 | **n8n workflow** | [`pipelines/`](pipelines) in the repo | We import + configure via your n8n UI directly |
 | **Schema + migrations** | [sql/complete/emi_dashboard_schema_aws.sql](sql/complete/emi_dashboard_schema_aws.sql) + future migration files | We run manually via our RDS access (never auto-deployed) |
 | **LLM integration** | [pipelines/_worker_v13_3_gemini_extract.js](pipelines/_worker_v13_3_gemini_extract.js) — prompt templates | We wire in Bedrock via the IAM you grant us |
