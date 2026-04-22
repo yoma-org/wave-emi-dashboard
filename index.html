@@ -406,6 +406,92 @@ body.emoney-view .mobile-menu .nav-btn:nth-child(n+3){display:none !important;}
   .stat-value{font-size:28px;}
   .modal{padding:20px;width:95%;}
 }
+
+/* ═══ KAN-47 Layer D — Multi-Attachment Tabbed UI ═════════════════════ */
+/* Tabstrip wrapper: allows overflow fade gradient on right edge (Fix E) */
+.tabstrip-wrap{position:relative}
+.tabstrip-wrap::after{content:'';position:absolute;top:0;right:0;bottom:2px;width:40px;background:linear-gradient(to right,rgba(255,255,255,0),var(--bg));pointer-events:none;opacity:0;transition:opacity .2s}
+.tabstrip-wrap.overflow::after{opacity:1}
+.tabstrip{display:flex;gap:2px;border-bottom:2px solid var(--navy);margin:0 0 -1px;overflow-x:auto;padding:0 2px;scrollbar-width:thin}
+.tabstrip::-webkit-scrollbar{height:6px}
+.tabstrip::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.tabstrip .tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;user-select:none;flex-shrink:0}
+.tabstrip .tab:hover{background:#e0e7ef;color:var(--navy)}
+.tabstrip .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tabstrip .tab.summary{background:var(--accent);color:var(--navy)}
+.tabstrip .tab.summary.active{background:var(--navy);color:var(--accent)}
+.tabstrip .tab-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.tabstrip .tab-dot.green{background:#16a34a}
+.tabstrip .tab-dot.yellow{background:#eab308}
+.tabstrip .tab-dot.red{background:#dc2626}
+.tab-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:20px;border-radius:0 0 10px 10px;min-height:200px}
+.tab-panel.hidden{display:none}
+/* Multi-column side-by-side hero table */
+/* Horizontal-scroll wrapper for wide multi-column tables (Fix F).
+   Inside, table keeps natural widths so column headers breathe. */
+.multisbs-wrap{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
+.multisbs-wrap::-webkit-scrollbar{height:8px}
+.multisbs-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+table.multisbs{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:13px;margin-top:0}
+table.multisbs th{text-align:left;padding:10px 10px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;background:var(--bg);border-bottom:2px solid #cbd5e1;white-space:nowrap}
+/* Sticky first column so Field label stays visible during horizontal scroll (Fix F) */
+table.multisbs th.col-field,
+table.multisbs td.col-field-cell{position:sticky;left:0;z-index:2;background:var(--bg);min-width:140px;max-width:160px;width:150px}
+table.multisbs th.col-match{width:64px;min-width:64px;text-align:center}
+table.multisbs th.col-email{background:#eff6ff;color:#1e40af;min-width:180px}
+table.multisbs th.col-att{background:#fefce8;color:#854d0e;min-width:200px;max-width:260px}
+table.multisbs td{padding:10px 10px;background:var(--bg);vertical-align:top;font-size:13px;word-wrap:break-word;overflow-wrap:anywhere;min-width:180px}
+table.multisbs td.col-match-cell{min-width:64px;width:64px;text-align:center}
+table.multisbs tr.match td{background:#dcfce7}
+table.multisbs tr.mismatch td{background:#fef3c7}
+table.multisbs tr.neutral td{background:#fafbfc}
+/* Sticky first-column cells must also pick up row background — override sticky bg */
+table.multisbs tr.match td.col-field-cell{background:#bbf7d0}
+table.multisbs tr.mismatch td.col-field-cell{background:#fde68a}
+table.multisbs tr.neutral td.col-field-cell{background:#f1f5f9}
+table.multisbs .field-label{font-weight:700;color:var(--navy);font-size:13px}
+table.multisbs .not-extracted{color:var(--muted);font-style:italic;font-size:12px}
+table.multisbs .extracted{color:#166534;font-weight:600}
+table.multisbs .match-icon{text-align:center;font-weight:700}
+.src-chip{display:inline-block;font-size:9px;background:var(--accent);color:var(--navy);padding:1px 5px;border-radius:3px;font-weight:800;margin-right:4px;vertical-align:middle}
+/* Three-Way Match Visual (no PASS/FAIL) */
+.twm-box{background:#fff;border:2px solid var(--accent);border-radius:10px;padding:18px;margin:16px 0}
+.twm-box h4{color:var(--navy);margin:0 0 6px;display:flex;align-items:center;gap:8px;font-size:14px}
+.twm-note{font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic}
+.twm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.twm-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.twm-card .src{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.03em;margin-bottom:6px}
+.twm-card .amount{font-size:18px;font-weight:800;color:var(--navy);font-family:'Menlo',monospace;word-break:break-word}
+.twm-card .amount.empty{color:var(--muted);font-style:italic;font-size:13px;font-weight:500}
+.twm-card .note{font-size:11px;color:var(--muted);margin-top:6px}
+.twm-card.highlight{background:#dcfce7;border-color:#16a34a}
+@media(max-width:700px){.twm-grid{grid-template-columns:1fr}}
+/* Email preview collapsible */
+.email-preview{border:1px solid #cbd5e1;border-radius:8px;margin-bottom:20px;overflow:hidden}
+.email-preview-header{background:var(--bg);padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--navy);border-left:3px solid var(--blue);user-select:none}
+.email-preview-body{padding:14px;font-size:13px;color:var(--text);background:#fafbfc;display:none}
+.email-preview.open .email-preview-body{display:block}
+.email-preview .arrow{color:var(--muted);transition:transform .2s;display:inline-block}
+.email-preview.open .arrow{transform:rotate(90deg)}
+.email-field{display:grid;grid-template-columns:100px 1fr;gap:12px;margin-bottom:6px;font-size:12px}
+.email-field .k{color:var(--muted);font-weight:600}
+.email-body-text{background:#fff;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-top:10px;white-space:pre-wrap;font-size:12px;line-height:1.7;color:#334155;max-height:200px;overflow-y:auto}
+/* CSV source-picker (inline dialog) */
+.csv-picker{background:#fff;border:2px solid var(--navy);border-radius:10px;padding:18px;margin-top:14px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.csv-picker h4{color:var(--navy);margin:0 0 12px;font-size:14px}
+.csv-picker .opt{padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s}
+.csv-picker .opt:hover:not(.disabled){border-color:var(--blue)}
+.csv-picker .opt.selected{background:#dcfce7;border-color:#16a34a}
+.csv-picker .opt.disabled{opacity:.45;cursor:not-allowed}
+.csv-picker .radio{width:16px;height:16px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0;background:#fff}
+.csv-picker .opt.selected .radio{background:#16a34a;border-color:#16a34a;box-shadow:inset 0 0 0 3px #fff}
+.csv-picker .opt-text{flex:1;font-size:13px}
+.csv-picker .opt-text b{display:block;color:var(--navy);margin-bottom:2px}
+.csv-picker .opt-text small{color:var(--muted);font-size:11px}
+/* Per-attachment tab header row */
+.att-tab-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.att-tab-head h3{margin:0 0 4px;font-size:16px;color:var(--navy)}
+.att-tab-head .sub{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body class="emoney-view">
@@ -511,7 +597,7 @@ body.emoney-view .mobile-menu .nav-btn:nth-child(n+3){display:none !important;}
 </div>
 
 <div class="modal-overlay" id="ticket-detail-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:900px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:min(95vw, 1400px);width:95vw;max-height:92vh;overflow-y:auto;padding:24px">
     <div id="ticket-detail-content"></div>
   </div>
 </div>
@@ -3369,9 +3455,524 @@ function approveAndDownloadCSV(ticketId){
   renderDashboard();
 }
 
-function openTicketDetail(ticketId){
+// ═══ KAN-47 Layer D — Multi-Attachment Rendering ═══════════════════════════
+// Minimal HTML-escape for user-extracted strings (filenames, email body, etc.)
+// Rest of this file does unsafe interpolation, but Layer D renders per-attachment
+// Gemini output which is effectively external-sourced — always escape.
+function escapeHtml(s){
+  if(s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Data fetcher: returns per-attachment rows joined with vision_results.
+// Used by openTicketDetail() to decide legacy vs multi-attachment render.
+async function fetchTicketAttachments(ticketUuid){
+  if(!sb || !ticketUuid) return [];
+  try {
+    const {data, error} = await sb
+      .from('ticket_attachments')
+      .select('id, file_name, mime_type, storage_url, size_bytes, created_at, ticket_vision_results(vision_parsed,vision_confidence,vision_status,document_type,document_signers,amount_on_document,extracted_fields)')
+      .eq('ticket_id', ticketUuid)
+      .order('created_at', {ascending: true});
+    if(error){ console.error('fetchTicketAttachments error:', error.message); return []; }
+    return (data || []).map((row, idx) => {
+      const v = Array.isArray(row.ticket_vision_results) ? row.ticket_vision_results[0] : row.ticket_vision_results;
+      const ef = (v && v.extracted_fields) || {};
+      return {
+        index: idx,
+        id: row.id,
+        filename: row.file_name,
+        mime_type: row.mime_type,
+        storage_url: row.storage_url,
+        size_bytes: row.size_bytes,
+        vision_parsed: v ? !!v.vision_parsed : false,
+        vision_confidence: v ? Number(v.vision_confidence || 0) : 0,
+        vision_status: v ? v.vision_status : 'none',
+        document_type: v ? v.document_type : '',
+        document_signers: v ? (v.document_signers || []) : [],
+        amount_on_document: v ? Number(v.amount_on_document || 0) : 0,
+        extracted_fields: ef
+      };
+    });
+  } catch(e){
+    console.error('fetchTicketAttachments exception:', e.message);
+    return [];
+  }
+}
+
+// Helper: status dot class based on extraction health.
+//   red    → extraction failed OR confidence is 0 (effectively unextracted, e.g. XLSX at index>0)
+//   yellow → extracted but low confidence (<0.7) — manual review recommended
+//   green  → confidence ≥ 0.7 — trust but verify
+function _kan47TabDot(att){
+  if(!att.vision_parsed || !att.vision_confidence || att.vision_confidence === 0) return 'red';
+  if(att.vision_confidence < 0.7) return 'yellow';
+  return 'green';
+}
+
+// Helper: format a value for display in multi-SBS table
+function _kan47DisplayVal(v){
+  if(v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) return null;
+  if(typeof v === 'number') return fmt(v);
+  return String(v);
+}
+
+// Helper: truncate filename with head-tail preservation (keeps extension visible).
+//   Example: grok_payroll_acme_innovations_3emp_USD.pdf  →  grok_payroll…USD.pdf
+// maxChars default 22: fits comfortably in a tab/column header at 13px font.
+function _kan47ShortFilename(name, maxChars){
+  maxChars = maxChars || 22;
+  if(!name) return '';
+  if(name.length <= maxChars) return name;
+  // Preserve extension (up to 5 chars after last dot)
+  const dot = name.lastIndexOf('.');
+  const ext = (dot > 0 && name.length - dot <= 6) ? name.slice(dot) : '';
+  const base = ext ? name.slice(0, dot) : name;
+  // Budget: maxChars - ext.length - 1 (ellipsis) split roughly 60/40 head/tail
+  const budget = maxChars - ext.length - 1;
+  if(budget < 4) return name.slice(0, maxChars - 1) + '…';  // pathological case
+  const headLen = Math.ceil(budget * 0.6);
+  const tailLen = budget - headLen;
+  return base.slice(0, headLen) + '…' + (tailLen > 0 ? base.slice(-tailLen) : '') + ext;
+}
+
+// Helper: short mime-type label for tab chip
+function _kan47MimeLabel(mime){
+  mime = (mime || '').toLowerCase();
+  if(mime.includes('pdf')) return 'PDF';
+  if(mime.includes('spreadsheet') || mime.includes('excel')) return 'XLSX';
+  if(mime.includes('png')) return 'PNG';
+  if(mime.includes('jpeg') || mime.includes('jpg')) return 'JPG';
+  if(mime.includes('csv')) return 'CSV';
+  return mime.split('/').pop().toUpperCase().slice(0,6) || '—';
+}
+
+// Render collapsible email preview (Summary tab top)
+function renderEmailPreviewKan47(t, attachments){
+  const fullBody = t.email_body_full || t.body_preview || '';
+  const fromStr = t.from_email || 'unknown sender';
+  const toStr = t.to_email || 'emoney@zeyalabs.ai';
+  const subj = t.original_subject || t.company || '(no subject)';
+  const attList = attachments.map(a => a.filename).join(' · ') || (t.attachment_names || []).join(' · ') || '(none)';
+  const dateStr = t.email_date ? new Date(t.email_date).toLocaleString() : '—';
+  return '<div class="email-preview open" id="kan47-email-preview">'
+    + '<div class="email-preview-header" onclick="document.getElementById(\'kan47-email-preview\').classList.toggle(\'open\')">'
+    + '<span>✉ Original Email · ' + attachments.length + ' attachment' + (attachments.length===1?'':'s') + ' · click to collapse</span>'
+    + '<span class="arrow">▶</span></div>'
+    + '<div class="email-preview-body">'
+    + '<div class="email-field"><span class="k">From</span><span class="sensitive">' + escapeHtml(fromStr) + '</span></div>'
+    + '<div class="email-field"><span class="k">To</span><span class="sensitive">' + escapeHtml(toStr) + '</span></div>'
+    + '<div class="email-field"><span class="k">Subject</span><span>' + escapeHtml(subj) + '</span></div>'
+    + '<div class="email-field"><span class="k">Received</span><span>' + escapeHtml(dateStr) + '</span></div>'
+    + '<div class="email-field"><span class="k">Attachments</span><span>' + escapeHtml(attList) + '</span></div>'
+    + (fullBody ? '<div class="email-body-text">' + escapeHtml(fullBody) + '</div>' : '')
+    + '</div></div>';
+}
+
+// Render the hero multi-column side-by-side table
+function renderMultiSBSTable(t, attachments){
+  // Fields to compare. Tuple: [display label, ticket-level key (email side), extracted_fields key (attachment side)]
+  const fields = [
+    ['Company',         'company',         'company'],
+    ['Total Amount',    'amount_requested','amount'],
+    ['Currency',        'currency',        'currency'],
+    ['Payment Date',    'payment_date',    'payment_date'],
+    ['Payroll Period',  'payroll_period',  'payroll_period'],
+    ['Initiator',       'initiator_name',  'initiator_name'],
+    ['Purpose',         'purpose',         'purpose'],
+    ['Cost Center',     'cost_center',     'cost_center'],
+    ['Corporate Wallet','corporate_wallet','corporate_wallet'],
+    ['Employees Count', null,              'employee_count'],
+    ['Doc Total',       null,              'total_amount_on_document']
+  ];
+
+  let html = '<h3 style="margin:20px 0 4px;font-size:15px">Multi-column side-by-side <span style="font-size:11px;color:var(--muted);font-weight:500">· every field, every source, Finance eyeballs</span></h3>';
+  html += '<div class="multisbs-wrap"><table class="multisbs"><thead><tr>';
+  html += '<th class="col-field">Field</th>';
+  html += '<th class="col-email">From Email</th>';
+  attachments.forEach(a => {
+    const shortName = _kan47ShortFilename(a.filename, 20);
+    html += '<th class="col-att" title="' + escapeHtml(a.filename) + '">' + (a.index + 1) + '. ' + escapeHtml(shortName) + ' <span class="src-chip">' + _kan47MimeLabel(a.mime_type) + '</span></th>';
+  });
+  html += '<th class="col-match">Match</th>';
+  html += '</tr></thead><tbody>';
+
+  fields.forEach(function(tuple){
+    const label = tuple[0], emailKey = tuple[1], attKey = tuple[2];
+    const emailVal = emailKey ? _kan47DisplayVal(t[emailKey]) : null;
+    const attVals = attachments.map(a => _kan47DisplayVal(a.extracted_fields ? a.extracted_fields[attKey] : null));
+    const nonEmpty = [emailVal].concat(attVals).filter(v => v !== null);
+
+    let rowClass = 'neutral';
+    let matchIcon = '<span style="color:var(--muted)">—</span>';
+    if(nonEmpty.length >= 2){
+      const allEqual = nonEmpty.every(v => String(v).toLowerCase().trim() === String(nonEmpty[0]).toLowerCase().trim());
+      if(allEqual){ rowClass = 'match'; matchIcon = '<span style="color:var(--success)">✓</span>'; }
+      else { rowClass = 'mismatch'; matchIcon = '<span style="color:#d97706">⚠</span>'; }
+    }
+
+    html += '<tr class="' + rowClass + '">';
+    html += '<td class="field-label col-field-cell">' + label + '</td>';
+    html += '<td>' + (emailVal !== null ? '<span class="extracted">' + escapeHtml(emailVal) + '</span>' : '<span class="not-extracted">Not in email</span>') + '</td>';
+    attVals.forEach(v => {
+      html += '<td>' + (v !== null ? '<span class="extracted">' + escapeHtml(v) + '</span>' : '<span class="not-extracted">Not extracted</span>') + '</td>';
+    });
+    html += '<td class="match-icon col-match-cell">' + matchIcon + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div style="font-size:11px;color:var(--muted);margin-top:8px"><b>Legend:</b> '
+    + '<span style="background:#dcfce7;padding:2px 6px;border-radius:4px">✓ values agree where present</span> &nbsp; '
+    + '<span style="background:#fef3c7;padding:2px 6px;border-radius:4px">⚠ values disagree</span> &nbsp; '
+    + '<span style="color:var(--muted)">— only one source has value (expected)</span></div>';
+  return html;
+}
+
+// Three-Way Match visual card (no PASS/FAIL assertion — per v3 principle)
+function renderThreeWayMatchKan47(t, attachments){
+  const emailAmt = Number(t.amount_requested || 0);
+  // Sum of total_amount_on_document across attachments (skip 0s so empty XLSX doesn't drag down)
+  const docSum = attachments.reduce((s, a) => {
+    const v = Number((a.extracted_fields && a.extracted_fields.total_amount_on_document) || 0);
+    return s + v;
+  }, 0);
+  // Sum of employee amounts across attachments
+  const empSum = attachments.reduce((s, a) => {
+    const emps = (a.extracted_fields && a.extracted_fields.employees) || [];
+    return s + emps.reduce((e, row) => e + Number(row.amount || 0), 0);
+  }, 0);
+  const cur = t.currency || 'MMK';
+  const card = (src, val, note, hilite) => {
+    const empty = !val || val === 0;
+    return '<div class="twm-card' + (hilite && !empty ? ' highlight' : '') + '">'
+      + '<div class="src">' + src + '</div>'
+      + '<div class="amount' + (empty ? ' empty' : '') + '">' + (empty ? 'Not stated' : fmt(val) + ' ' + cur) + '</div>'
+      + (note ? '<div class="note">' + note + '</div>' : '')
+      + '</div>';
+  };
+  return '<div class="twm-box"><h4>🔺 Amount Reconciliation</h4>'
+    + '<div class="twm-note">Three sources, shown side-by-side. Finance confirms alignment visually — system does not assert PASS/FAIL.</div>'
+    + '<div class="twm-grid">'
+    + card('Email Body', emailAmt, emailAmt ? 'From client’s email body' : 'Email did not state an amount', true)
+    + card('Attachment Totals (sum)', docSum, attachments.length + ' attachments · sum of total_amount_on_document', true)
+    + card('Employee Rows (sum)', empSum, attachments.filter(a => (a.extracted_fields?.employees||[]).length > 0).length + ' lists contributed', true)
+    + '</div></div>';
+}
+
+// Per-attachment detail panel (reused for each tab)
+function renderSingleAttachmentKan47(t, att){
+  const ef = att.extracted_fields || {};
+  const mime = (att.mime_type || '').toLowerCase();
+  const isPdf = mime.includes('pdf');
+  const isImg = mime.startsWith('image/');
+  const isXlsx = mime.includes('spreadsheet') || mime.includes('excel');
+  const confPct = att.vision_parsed ? (att.vision_confidence * 100).toFixed(0) + '%' : '—';
+  const sizeKb = att.size_bytes ? Math.round(att.size_bytes / 1024) + ' KB' : '';
+  const sizeDisplay = att.size_bytes > 1024*1024 ? (att.size_bytes / 1024/1024).toFixed(1) + ' MB' : sizeKb;
+  const previewId = 'kan47-att-preview-' + att.index;
+
+  let html = '<div class="att-tab-head">';
+  // Full filename in tooltip; truncated at 40 chars for display so it fits the panel
+  const headName = att.filename && att.filename.length > 42 ? _kan47ShortFilename(att.filename, 40) : att.filename;
+  html += '<div><h3 title="' + escapeHtml(att.filename) + '">' + (att.index + 1) + '. ' + escapeHtml(headName) + '</h3>';
+  html += '<div class="sub">' + escapeHtml(att.mime_type || 'unknown') + ' · ' + sizeDisplay + ' · Vision: ' + confPct + ' · Type: ' + escapeHtml(att.document_type || '—') + '</div></div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  if(isPdf || isImg) html += '<button class="btn btn-outline btn-sm" onclick="loadAttachmentPreviewKan47(\'' + att.index + '\',\'' + previewId + '\',' + (isPdf ? 'true' : 'false') + ',' + (isImg ? 'true' : 'false') + ')">📎 Preview</button>';
+  if(isXlsx) html += '<button class="btn btn-outline btn-sm" onclick="downloadAttachmentKan47(\'' + att.index + '\')">⬇ Download XLSX</button>';
+  html += '</div></div>';
+
+  // Inline preview target
+  html += '<div id="' + previewId + '" style="display:none;margin-bottom:16px"></div>';
+
+  // Document-side facts table
+  html += '<div class="multisbs-wrap"><table class="multisbs"><thead><tr>';
+  html += '<th class="col-field">Field</th>';
+  html += '<th class="col-email">From Email</th>';
+  html += '<th class="col-att" title="' + escapeHtml(att.filename) + '">From ' + escapeHtml(_kan47ShortFilename(att.filename, 26)) + ' <span class="src-chip">' + _kan47MimeLabel(att.mime_type) + '</span></th>';
+  html += '<th class="col-match">Match</th>';
+  html += '</tr></thead><tbody>';
+  const fields = [
+    ['Company',         t.company,              ef.company],
+    ['Amount',          t.amount_requested,     ef.amount],
+    ['Currency',        t.currency,             ef.currency],
+    ['Payment Date',    t.payment_date,         ef.payment_date],
+    ['Initiator',       t.initiator_name,       ef.initiator_name],
+    ['Purpose',         t.purpose,              ef.purpose],
+    ['Cost Center',     t.cost_center,          ef.cost_center],
+    ['Doc Company',     t.doc_company_name,     ef.doc_company_name],
+    ['Doc Total',       null,                   ef.total_amount_on_document],
+    ['Signers',         null,                   (att.document_signers || []).map(s => (s.name||'') + (s.role ? ' ('+s.role+')' : '')).join(', ')]
+  ];
+  fields.forEach(function(tuple){
+    const label = tuple[0];
+    const emailVal = _kan47DisplayVal(tuple[1]);
+    const attVal = _kan47DisplayVal(tuple[2]);
+    let rowClass = 'neutral', icon = '<span style="color:var(--muted)">—</span>';
+    if(emailVal !== null && attVal !== null){
+      if(String(emailVal).toLowerCase().trim() === String(attVal).toLowerCase().trim()){
+        rowClass = 'match'; icon = '<span style="color:var(--success)">✓</span>';
+      } else { rowClass = 'mismatch'; icon = '<span style="color:#d97706">⚠</span>'; }
+    }
+    html += '<tr class="' + rowClass + '">';
+    html += '<td class="field-label col-field-cell">' + label + '</td>';
+    html += '<td>' + (emailVal !== null ? '<span class="extracted">' + escapeHtml(emailVal) + '</span>' : '<span class="not-extracted">Not in email</span>') + '</td>';
+    html += '<td>' + (attVal !== null ? '<span class="extracted">' + escapeHtml(attVal) + '</span>' : '<span class="not-extracted">Not extracted</span>') + '</td>';
+    html += '<td class="match-icon col-match-cell">' + icon + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Per-attachment employee list (if present)
+  const emps = Array.isArray(ef.employees) ? ef.employees : [];
+  if(emps.length > 0){
+    html += '<h4 style="margin-top:20px;color:var(--navy);font-size:14px">Employee list (' + emps.length + ' row' + (emps.length===1?'':'s') + ' from this attachment)</h4>';
+    html += '<div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-top:6px"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="background:var(--bg)"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">#</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">Name</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">MSISDN / Account</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border)">Amount</th></tr></thead><tbody style="font-family:\'Menlo\',monospace;font-size:11px">';
+    emps.slice(0, 200).forEach(function(e, i){
+      html += '<tr><td style="padding:5px 8px">' + (i+1) + '</td>'
+        + '<td style="padding:5px 8px;font-family:\'Inter\',sans-serif">' + escapeHtml(e.name || '—') + '</td>'
+        + '<td style="padding:5px 8px">' + escapeHtml(e.account_or_phone || e.msisdn || e.phone || '—') + '</td>'
+        + '<td style="padding:5px 8px;text-align:right">' + (e.amount ? fmt(e.amount) : '—') + '</td></tr>';
+    });
+    if(emps.length > 200) html += '<tr><td colspan="4" style="padding:6px 8px;text-align:center;color:var(--muted);font-style:italic">... ' + (emps.length - 200) + ' more rows truncated for display ...</td></tr>';
+    html += '</tbody></table></div>';
+  } else if(att.vision_parsed){
+    html += '<div style="margin-top:16px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:13px;color:#0c4a6e"><strong>ℹ No employee list in this attachment</strong> — this document type (' + escapeHtml(att.document_type || 'unknown') + ') does not contain a beneficiary roster.</div>';
+  } else {
+    html += '<div style="margin-top:16px;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;font-size:13px;color:#78350f"><strong>⚠ This attachment was not extracted</strong> — vision_status: ' + escapeHtml(att.vision_status || 'unknown') + '. Finance may still review the raw file.</div>';
+  }
+
+  return html;
+}
+
+// Switch tabs in the ticket detail modal (vanilla JS, no framework)
+function switchKan47Tab(tabId){
+  document.querySelectorAll('#ticket-detail-content .tabstrip .tab').forEach(function(tab){
+    tab.classList.toggle('active', tab.dataset.tabId === tabId);
+  });
+  document.querySelectorAll('#ticket-detail-content .tab-panel').forEach(function(panel){
+    panel.classList.toggle('hidden', panel.dataset.tabId !== tabId);
+  });
+}
+
+// Lazy-load attachment preview (signed URL) for per-tab rendering
+async function loadAttachmentPreviewKan47(attIdx, previewId, isPdf, isImg){
+  const previewEl = document.getElementById(previewId);
+  if(!previewEl) return;
+  if(previewEl.style.display === 'block'){ previewEl.style.display = 'none'; return; }
+  previewEl.style.display = 'block';
+  if(previewEl.dataset.loaded === '1') return;
+  const att = (window._kan47CurrentAttachments || [])[Number(attIdx)];
+  if(!att || !att.storage_url){ previewEl.innerHTML = '<span style="color:var(--danger)">No storage URL for this attachment</span>'; return; }
+  if(!sb){ previewEl.innerHTML = '<span style="color:var(--danger)">Supabase client unavailable</span>'; return; }
+  previewEl.innerHTML = '<div style="color:var(--muted);font-style:italic">Loading preview…</div>';
+  try {
+    const {data, error} = await sb.storage.from('attachments').createSignedUrl(att.storage_url, 3600);
+    if(error || !data){ previewEl.innerHTML = '<span style="color:var(--danger)">Failed: ' + (error?.message || 'unknown') + '</span>'; return; }
+    previewEl.innerHTML = renderAttachmentPreviewHtml(data.signedUrl, isPdf, false);
+    previewEl.dataset.loaded = '1';
+  } catch(e){
+    previewEl.innerHTML = '<span style="color:var(--danger)">Error: ' + e.message + '</span>';
+  }
+}
+
+// Download an attachment (for XLSX tabs — can't preview inline)
+async function downloadAttachmentKan47(attIdx){
+  const att = (window._kan47CurrentAttachments || [])[Number(attIdx)];
+  if(!att || !att.storage_url || !sb){ alert('Cannot download — storage URL missing'); return; }
+  try {
+    const {data, error} = await sb.storage.from('attachments').createSignedUrl(att.storage_url, 3600);
+    if(error || !data){ alert('Failed to generate download URL: ' + (error?.message || 'unknown')); return; }
+    window.open(data.signedUrl, '_blank', 'noopener');
+  } catch(e){ alert('Error: ' + e.message); }
+}
+
+// CSV source-picker: show dialog at bottom of Summary tab
+function openCsvPickerKan47(ticketId){
+  const attachments = window._kan47CurrentAttachments || [];
+  const eligible = attachments.filter(a => ((a.extracted_fields?.employees) || []).length > 0);
+  let html = '<div class="csv-picker" id="kan47-csv-picker-box">'
+    + '<h4>Which attachment has the employee list for Utiba CSV?</h4>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">System pre-selects the attachment with the most complete list. Finance can override.</div>';
+  if(eligible.length === 0){
+    html += '<div style="padding:14px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;color:#78350f;font-size:13px"><strong>⚠ No attachment has an employee list.</strong> Cannot auto-generate a Utiba CSV. Upload a list manually from the Employee List section (coming soon).</div>';
+  } else {
+    // Pre-select the one with the most employees
+    let bestIdx = 0, bestCount = 0;
+    eligible.forEach((a, i) => {
+      const n = (a.extracted_fields?.employees || []).length;
+      if(n > bestCount){ bestCount = n; bestIdx = i; }
+    });
+    attachments.forEach((a, i) => {
+      const emps = (a.extracted_fields?.employees || []);
+      const hasEmps = emps.length > 0;
+      const total = (a.extracted_fields?.total_amount_on_document) || emps.reduce((s,e)=>s+Number(e.amount||0),0);
+      const selected = hasEmps && eligible.indexOf(a) === bestIdx;
+      html += '<div class="opt' + (hasEmps ? (selected ? ' selected' : '') : ' disabled') + '"' + (hasEmps ? ' onclick="_kan47SelectCsvSource(this,\'' + a.index + '\')"' : '') + ' data-source="' + a.index + '">';
+      html += '<div class="radio"></div>';
+      html += '<div class="opt-text"><b>' + (a.index + 1) + '. ' + escapeHtml(a.filename) + '</b>';
+      html += '<small>' + (hasEmps ? emps.length + ' employees · total ' + fmt(total) + ' ' + (a.extracted_fields?.currency || 'MMK') : 'No employee list in this document') + '</small>';
+      html += '</div></div>';
+    });
+    const defaultSource = eligible[bestIdx].index;
+    html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'kan47-csv-picker-box\').remove()">Cancel</button>';
+    html += '<button class="btn btn-primary btn-sm" id="kan47-csv-gen-btn" onclick="generateCsvFromAttachmentKan47(\'' + ticketId + '\',\'' + defaultSource + '\')">Generate CSV</button>';
+    html += '</div>';
+    // Stash default on the container for later retrieval
+    html = html.replace('id="kan47-csv-picker-box"', 'id="kan47-csv-picker-box" data-selected="' + defaultSource + '"');
+  }
+  html += '</div>';
+  // Insert at the bottom of the summary panel (or replace if already there)
+  const existing = document.getElementById('kan47-csv-picker-box');
+  if(existing){ existing.outerHTML = html; }
+  else {
+    const summaryPanel = document.querySelector('#ticket-detail-content .tab-panel[data-tab-id="summary"]');
+    if(summaryPanel) summaryPanel.insertAdjacentHTML('beforeend', html);
+  }
+  // Scroll into view
+  const box = document.getElementById('kan47-csv-picker-box');
+  if(box) box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function _kan47SelectCsvSource(optEl, sourceIdx){
+  const box = document.getElementById('kan47-csv-picker-box');
+  if(!box) return;
+  box.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+  optEl.classList.add('selected');
+  box.dataset.selected = sourceIdx;
+  const btn = document.getElementById('kan47-csv-gen-btn');
+  if(btn) btn.setAttribute('onclick', 'generateCsvFromAttachmentKan47(\'' + (box.dataset.ticketId || '') + '\',\'' + sourceIdx + '\')');
+}
+
+// Generate CSV from the selected attachment's employees[]
+function generateCsvFromAttachmentKan47(ticketId, sourceIdx){
   const t = state.tickets[ticketId];
-  if(!t) return;
+  const attachments = window._kan47CurrentAttachments || [];
+  const att = attachments[Number(sourceIdx)];
+  if(!t || !att){ alert('Attachment not found'); return; }
+  const emps = (att.extracted_fields?.employees) || [];
+  if(emps.length === 0){ alert('No employees in this attachment'); return; }
+  // Reuse the existing CSV approval flow by temporarily swapping the employee list
+  const originalEmps = t.extracted_employees;
+  t.extracted_employees = emps.map(e => ({
+    name: e.name,
+    amount: Number(e.amount || 0),
+    account_or_phone: e.account_or_phone || e.msisdn || e.phone || ''
+  }));
+  try {
+    if(typeof approveAndDownloadCSV === 'function') approveAndDownloadCSV(ticketId);
+    else if(typeof downloadCSVOnly === 'function') downloadCSVOnly(ticketId);
+    else alert('CSV generator not available in this build');
+  } finally {
+    // Restore original data (don't mutate state permanently on user cancel)
+    t.extracted_employees = originalEmps;
+  }
+}
+
+// Main multi-attachment renderer — called by openTicketDetail dispatch
+function renderTicketDetailMulti(t, attachments){
+  // Stash attachments for async preview helpers to access without re-fetch
+  window._kan47CurrentAttachments = attachments;
+  const container = document.getElementById('ticket-detail-content');
+  const subject = t.original_subject || t.company;
+  const hasSenderEmail = !!t.from_email;
+
+  let html = '';
+
+  // Header (mirror legacy header + badge showing attachment count)
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid var(--border)">';
+  html += '<div><h3 style="margin:0">' + escapeHtml(t.id) + ' · ' + escapeHtml(subject) + '</h3>';
+  if(t.created_at) html += '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + fmtTime(t.created_at) + ' · ' + new Date(t.created_at).toLocaleString() + '</div>';
+  html += '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
+  html += typeBadgeHtml(t.type) + ' ' + riskBadgeHtml(t.risk_level);
+  if(t.scenario && t.scenario !== 'NORMAL') html += '<span class="badge badge-warn">' + t.scenario.replace(/_/g, ' ') + '</span>';
+  html += '<span class="badge" style="background:var(--navy);color:#fff">' + attachments.length + ' attachments · side-by-side</span>';
+  html += '</div></div>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'ticket-detail-modal\').classList.remove(\'open\')" style="font-size:20px;padding:4px 8px">×</button>';
+  html += '</div>';
+
+  // Amount mismatch banner (same logic as legacy — top of modal)
+  if(t.has_mismatch){
+    const emailDocDiff = Math.abs((t.amount_on_document || 0) - (t.amount_requested || 0));
+    let mismatchMsg = '';
+    if(emailDocDiff > 0){
+      const pct = t.amount_requested ? ((emailDocDiff / t.amount_requested) * 100).toFixed(1) : '0';
+      mismatchMsg = 'Email: ' + fmtCur(t.amount_requested, t.currency) + ' &nbsp;vs&nbsp; Document: ' + fmtCur(t.amount_on_document, t.currency) + '<br><span style="font-size:12px">Difference: ' + fmtCur(emailDocDiff, t.currency) + ' (' + pct + '%) — Flagged for human review</span>';
+    } else {
+      mismatchMsg = 'Amount discrepancy detected — see Summary tab for per-attachment breakdown';
+    }
+    html += '<div class="cross-validation-box mismatch" style="margin-bottom:14px"><div><strong>AMOUNT MISMATCH</strong><br>' + mismatchMsg + '</div></div>';
+  }
+
+  // Tabstrip (wrapped for overflow-fade gradient — Fix E)
+  html += '<div class="tabstrip-wrap" id="kan47-tabstrip-wrap"><div class="tabstrip">';
+  html += '<div class="tab summary active" data-tab-id="summary" onclick="switchKan47Tab(\'summary\')"><span class="tab-dot green"></span> Summary</div>';
+  attachments.forEach(function(a){
+    html += '<div class="tab" data-tab-id="att-' + a.index + '" onclick="switchKan47Tab(\'att-' + a.index + '\')" title="' + escapeHtml(a.filename) + '">';
+    html += '<span class="tab-dot ' + _kan47TabDot(a) + '"></span>';
+    html += (a.index + 1) + '. ' + escapeHtml(_kan47ShortFilename(a.filename, 22));
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Summary tab panel
+  html += '<div class="tab-panel" data-tab-id="summary">';
+  html += renderEmailPreviewKan47(t, attachments);
+  html += renderMultiSBSTable(t, attachments);
+  html += renderThreeWayMatchKan47(t, attachments);
+  html += '</div>';
+
+  // Per-attachment panels
+  attachments.forEach(function(a){
+    html += '<div class="tab-panel hidden" data-tab-id="att-' + a.index + '">';
+    html += renderSingleAttachmentKan47(t, a);
+    html += '</div>';
+  });
+
+  // Action bar (ticket-level)
+  const alreadyApproved = t.finance_status === 'APPROVED';
+  const alreadyReturned = !!t.returned_at;
+  html += '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap">';
+  if(!alreadyApproved && !alreadyReturned){
+    html += '<button class="btn btn-danger" onclick="returnToClient(\'' + t.id + '\')"' + (hasSenderEmail ? '' : ' disabled') + '>↩ Return to Client</button>';
+    html += '<button class="btn btn-success" onclick="openCsvPickerKan47(\'' + t.id + '\')">📊 Generate CSV for Finance</button>';
+  } else if(alreadyApproved){
+    html += '<span style="padding:8px 14px;background:#dcfce7;color:#166534;border-radius:8px;font-size:13px;font-weight:600">✓ Approved' + (t.approved_at ? ' on ' + new Date(t.approved_at).toLocaleString() : '') + '</span>';
+  } else if(alreadyReturned){
+    html += '<span style="padding:8px 14px;background:#fef3c7;color:#92400e;border-radius:8px;font-size:13px;font-weight:600">↩ Returned to client' + (t.returned_at ? ' on ' + new Date(t.returned_at).toLocaleString() : '') + '</span>';
+  }
+  html += '</div>';
+
+  container.innerHTML = html;
+  // Stash ticketId on picker box for source selection
+  const box = document.getElementById('kan47-csv-picker-box');
+  if(box) box.dataset.ticketId = t.id;
+  document.getElementById('ticket-detail-modal').classList.add('open');
+  // Toggle the overflow fade on the tabstrip wrapper (Fix E) — run after
+  // the modal is visible so element dimensions are real.
+  setTimeout(function(){
+    const wrap = document.getElementById('kan47-tabstrip-wrap');
+    if(!wrap) return;
+    const strip = wrap.querySelector('.tabstrip');
+    if(!strip) return;
+    const update = function(){
+      const atEnd = strip.scrollWidth - strip.scrollLeft - strip.clientWidth < 4;
+      wrap.classList.toggle('overflow', strip.scrollWidth > strip.clientWidth && !atEnd);
+    };
+    update();
+    strip.addEventListener('scroll', update, {passive: true});
+    window.addEventListener('resize', update, {passive: true});
+  }, 0);
+}
+
+// ─── Legacy path: single-attachment renderer (unchanged behavior) ───────────
+function _renderTicketDetailLegacy(t){
   const container = document.getElementById('ticket-detail-content');
   const subject = t.original_subject||t.company;
   let html = '';
@@ -3601,6 +4202,35 @@ function openTicketDetail(ticketId){
 
   container.innerHTML = html;
   document.getElementById('ticket-detail-modal').classList.add('open');
+}
+
+// KAN-47 Layer D dispatch: async — fetches attachments, picks legacy vs multi render.
+// Entry point called from ticket-list clicks, activity-log links, URL ?ticket= param.
+async function openTicketDetail(ticketId){
+  const t = state.tickets[ticketId];
+  if(!t) return;
+  // Show a quick "loading" hint in the modal so it doesn't feel empty during fetch
+  const container = document.getElementById('ticket-detail-content');
+  if(container){
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Loading ticket details…</div>';
+    document.getElementById('ticket-detail-modal').classList.add('open');
+  }
+  let attachments = [];
+  if(sb && t.id){
+    // Resolve the UUID: state.tickets is keyed by ticket_number (TKT-xxx) but
+    // ticket_attachments.ticket_id is the UUID. Look it up via the ticket row itself.
+    try {
+      const {data: ticketRow, error: tErr} = await sb.from('tickets_v2').select('id').eq('ticket_number', t.id).single();
+      if(!tErr && ticketRow && ticketRow.id){
+        attachments = await fetchTicketAttachments(ticketRow.id);
+      }
+    } catch(e){ console.error('openTicketDetail uuid lookup:', e.message); }
+  }
+  if(attachments.length <= 1){
+    _renderTicketDetailLegacy(t);
+  } else {
+    renderTicketDetailMulti(t, attachments);
+  }
 }
 
 // ─── KEYBOARD SHORTCUT ────────────────────────────────────────────────────────
