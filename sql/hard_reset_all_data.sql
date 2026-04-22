@@ -45,13 +45,15 @@ SELECT
   (SELECT COUNT(*) FROM email_queue)                    AS email_queue,
   (SELECT COUNT(*) FROM worker_config)                  AS worker_config_preserved;
 
--- Legacy table check (may or may not exist)
+-- Legacy table check — information_schema only (do NOT query public.tickets
+-- inside THEN, because Postgres parses the whole CASE branch regardless of
+-- the EXISTS evaluation. On a DB that already dropped the table the parse
+-- fails with 42P01. Bug caught Apr 22, 2026 during KAN-47 post-ship reset.)
 SELECT CASE
   WHEN EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'tickets'
-  ) THEN (SELECT COUNT(*)::text || ' rows in legacy tickets table — will be dropped'
-           FROM public.tickets)
+  ) THEN 'Legacy tickets table EXISTS — will be dropped in Step 3'
   ELSE 'Legacy tickets table does not exist — drop step is a no-op'
 END AS legacy_tickets_status;
 
