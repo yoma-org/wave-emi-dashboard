@@ -11,6 +11,34 @@ last_reviewed: 2026-04-20
 
 # KAN-47 v13.3 Implementation Plan
 
+> ## ⚠️ ARCHITECTURE CORRECTION — 2026-04-20 PM session
+>
+> **Discovered during Phase 0.3 pre-flight**: `tickets_v2` has NO `raw_payload` column. Schema is fully relational — multi-attachment support is ALREADY BUILT via `ticket_attachments` table + `ticket_vision_results.attachment_id` FK (see [sql/02_enhanced_schema.sql](../../sql/02_enhanced_schema.sql)). **Zero DB migration needed for v13.3.**
+>
+> ### Plan sections now obsolete (ignore while reading)
+> - "ALTER TABLE to add schema_version column" (Layer A, Layer B) — SKIP, no schema change
+> - "JSONB `raw_payload` absorbs new shape" — doesn't exist, ignore all references
+> - "Deterministic `ticket_id` via sha1(message_id)" — REDUNDANT: existing webhook Step 0 check against `ticket_emails.message_id` already handles idempotency (5/5 Council convergence was technically right but missed that the pattern was already implemented)
+> - Dispatch on `schema_version === 'v13.3'` — REPLACED by `COUNT(*) FROM ticket_attachments` (multi = count > 1)
+>
+> ### What still applies (no change)
+> - Phase 1.5 Final Cutover (activation AFTER all layers live) — 4/5 Council consensus
+> - Client-fail gate BEFORE system-fail gate — DeepSeek sharpest critique
+> - All-or-nothing rejection with 3 triggers (password / unreadable / too-many)
+> - smime / auto-attach pre-filter in Count Attachments
+> - Storage path `{ticket_number}/{index}_{sanitized_filename}` — collision safety still true
+> - Rollback drain protocol (wait for zero in-flight n8n execs before Vercel rollback)
+> - 16-scenario test matrix
+> - Gemini extraction schema validation (Qwen Q7)
+> - n8n timeout verification in Phase 0.6
+>
+> ### Layer B is ALREADY IMPLEMENTED as of Apr 20 night
+> Commit `9edba14` on `kan47-v13.3` branch ships the webhook change: unified per-attachment loop accepting both legacy `attachment_base64` single-shape and new `attachments: [...]` array-shape. Collision-safe storage paths. Per-attachment vision_results insert with correct `attachment_id` FK. Backward-compat preserved. Smoke test pending for Apr 21 morning.
+>
+> **Full discovery context**: see session log at `memory/project_kan47_implementation_log_apr20.md` CP-04 through CP-08.
+
+---
+
 > **Purpose**: depth that the mockup doesn't provide. This doc surfaces execution order, integration risk, logging/verification checkpoints, and the blind spots that only appear when you zoom in.
 >
 > **Companion docs**:
