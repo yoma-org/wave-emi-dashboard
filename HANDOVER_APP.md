@@ -89,6 +89,35 @@ You never need to touch the app stack. If something breaks, we'll debug using th
 **Request bodies**:
 - Lambda webhook (SQS message body OR direct invoke payload) JSON: `{ company, message_id, from_address, subject, extracted_fields, attachments[], ... }` — full payload defined by n8n worker's final node output. Idempotency via `message_id`.
 
+### 3.1.1 Attachment preview flow (two S3 buckets, one attachment path)
+
+Two S3 buckets exist in the design:
+
+| Bucket | Role | How browser accesses |
+|---|---|---|
+| **Static dashboard bucket** | Serves `index.html` + CSS/JS | ALB → VPC Endpoint → S3 (public-ish within Wave's network via ALB) |
+| **Attachments bucket** | Stores PDF/XLSX/image binaries extracted from emails | Browser requests presigned URL from backend → fetches bytes directly from S3 via that URL |
+
+**Attachment preview flow** (maps from current Supabase Storage `sb.storage.from('attachments').createSignedUrl(...)` pattern at [index.html:1224](index.html)):
+
+1. User clicks "view attachment" in dashboard
+2. Browser calls backend (n8n HTTP-trigger workflow OR Lambda) with the S3 object key, e.g., `tickets/TKT-042/attachments/bank_slip.pdf`
+3. Backend uses AWS SDK to generate an S3 presigned URL (TTL ~1 hour, IAM-scoped to the attachments bucket only)
+4. Browser uses the presigned URL directly with `PDF.js` (for PDFs) or `<img src>` (for images) — bandwidth bypasses the backend
+5. URL expires after TTL; user clicks again to regenerate if needed
+
+**Why this pattern**:
+- Browser never holds long-lived AWS credentials
+- Attachments bucket stays private (no public-access policy)
+- Backend gates access via IAM + app-level auth
+- Short TTL limits the blast radius of URL leakage
+
+**Security requirements for the attachments bucket** (reinforcing §8):
+- Bucket policy: no public access, encryption at rest (SSE-S3 or SSE-KMS)
+- CORS: allow `GET` from the dashboard ALB domain only
+- Server-side encryption required (attachments contain PII: employee lists, bank account numbers, signatures)
+- Presigned URLs should be `GET`-only, never `PUT` in the browser path (uploads go through backend)
+
 ### 3.2 Deferred scope (not in AWS v1)
 
 **Lambda `extract-employee`** — browser-upload employee roster → Bedrock OCR. Currently served from Vercel (`api/extract-employees.js`) but **deferred** from AWS v1 for three reasons:
